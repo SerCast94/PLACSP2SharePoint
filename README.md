@@ -1,6 +1,10 @@
 # PLACSP2SharePoint
 
-Herramienta para descargar datos de la Plataforma de Contratación del Sector Público (PLACSP), convertirlos a Excel y subirlos automáticamente a SharePoint.
+[![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)](https://adoptium.net/)
+[![Windows](https://img.shields.io/badge/Platform-Windows-blue?logo=windows)]()
+[![License](https://img.shields.io/badge/License-EUPL--1.2-green)](licenses/EUPL-1.2%20EN.txt)
+
+Herramienta para descargar datos de la **Plataforma de Contratación del Sector Público (PLACSP)**, convertirlos a Excel y subirlos automáticamente a SharePoint.
 
 ## 🎯 Funcionalidades
 
@@ -126,9 +130,9 @@ Variables de entorno requeridas en el contenedor:
 
 ## 📋 Requisitos
 
+- **Java**: JDK 21+ ([Azul Zulu](https://www.azul.com/downloads/) o [Eclipse Temurin](https://adoptium.net/))
 - **Sistema**: Windows 10/11 (o Docker para Linux)
 - **Azure AD**: App Registration con permisos `Sites.Selected`
-- **Sin dependencias externas**: Incluye JDK 21 embebido
 
 ## 📦 Dependencias principales
 
