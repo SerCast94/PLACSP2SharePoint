@@ -12,11 +12,11 @@ import java.util.stream.Collectors;
 
 /**
  * Clase responsable de convertir archivos ZIP/ATOM a formato Excel.
- * Utiliza el CLI de open-placsp para realizar las conversiones.
+ * Utiliza el CLI de PLACSP2SharePoint para realizar las conversiones.
  */
 public class AtomToExcelConverter {
 
-    private static final String CLI_COMMAND = "scripts\\open-placsp-cli.bat";
+    private static final String CLI_COMMAND = "placsp-cli.bat";
 
     /**
      * Convierte un archivo ZIP a Excel usando el CLI.
@@ -50,7 +50,6 @@ public class AtomToExcelConverter {
                     new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = br.readLine()) != null) {
-                    // Filtrar líneas de log4j y mostrar solo las importantes
                     if (!line.contains("org.apache.logging") && 
                         !line.contains("XmlConfiguration") &&
                         !line.contains("watching for changes") &&

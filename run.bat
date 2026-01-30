@@ -4,7 +4,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 
 echo.
 echo  ========================================================
-echo            PLACSP - Workflow Automatizado
+echo          PLACSP2SharePoint - Workflow Automatizado
 echo    Descarga - Conversion a Excel - Subida a SharePoint
 echo  ========================================================
 echo.

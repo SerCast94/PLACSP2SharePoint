@@ -1,4 +1,4 @@
-# PLACSP Workflow - Automatización de Contratación Pública
+# PLACSP2SharePoint
 
 Herramienta para descargar datos de la Plataforma de Contratación del Sector Público (PLACSP), convertirlos a Excel y subirlos automáticamente a SharePoint.
 
@@ -12,9 +12,9 @@ Herramienta para descargar datos de la Plataforma de Contratación del Sector P�
 ## 📁 Estructura del Proyecto
 
 ```
-programa/
+PLACSP2SharePoint/
 ├── run.bat                     # Script principal - ejecuta todo el workflow
-├── open-placsp-cli.bat         # CLI para conversión manual ZIP→Excel
+├── placsp-cli.bat              # CLI para conversión manual ZIP→Excel
 ├── .env                        # Configuración (credenciales SharePoint)
 ├── .env.example                # Plantilla de configuración
 │
@@ -34,7 +34,6 @@ programa/
 │
 ├── target/classes/             # Archivos compilados (.class)
 ├── lib/                        # Dependencias JAR (POI, CODICE, Graph, etc.)
-├── jdk/                        # JDK embebido (Zulu OpenJDK 21)
 ├── descargas/                  # Archivos descargados temporalmente
 ├── logs/                       # Log de operaciones (placsp.log)
 ├── docker/                     # Archivos para containerización
@@ -72,7 +71,7 @@ run.bat
 ### Solo conversión manual (ZIP → Excel)
 
 ```cmd
-open-placsp-cli.bat --in archivo.zip --out salida.xlsx
+placsp-cli.bat --in archivo.zip --out salida.xlsx
 ```
 
 Opciones del CLI:
@@ -88,11 +87,11 @@ Si modifica el código fuente, recompile con:
 
 ```cmd
 :: Compilar modelos (encoding Windows-1252)
-.\jdk\bin\javac -encoding Cp1252 -cp "lib\*" -d target\classes ^
+javac -encoding Cp1252 -cp "lib\*" -d target\classes ^
     src\main\java\es\age\dgpe\placsp\risp\parser\model\*.java
 
 :: Compilar resto (encoding UTF-8)
-.\jdk\bin\javac -encoding UTF-8 -cp "lib\*;target\classes" -d target\classes ^
+javac -encoding UTF-8 -cp "lib\*;target\classes" -d target\classes ^
     src\main\java\es\age\dgpe\placsp\risp\parser\utils\*.java ^
     src\main\java\es\age\dgpe\placsp\risp\parser\utils\genericode\*.java ^
     src\main\java\es\age\dgpe\placsp\risp\parser\cli\*.java ^

@@ -3,10 +3,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>es.age.dgpe.placsp</groupId>
-    <artifactId>placsp-scraper</artifactId>
+    <artifactId>placsp2sharepoint</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>PLACSP Scraper</name>
+    <name>PLACSP2SharePoint</name>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -24,17 +24,6 @@
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.15.3</version>
-        </dependency>
-        <!-- Log4j2 for logging -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>2.20.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>2.20.0</version>
         </dependency>
         <!-- Apache POI (opcional, si usas Excel) -->
         <dependency>
