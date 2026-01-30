@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  placsp-workflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: placsp-workflow:latest
+    container_name: placsp-workflow
+    
+    # Ejecutar una sola vez
+    # command: run
+    
+    # O ejecutar periódicamente con cron
+    command: cron
+    
+    environment:
+      - TZ=Europe/Madrid
+      - CRON_SCHEDULE=0 2 * * *  # Todos los días a las 2 AM
+      # - JAVA_OPTS=-Xmx2g  # Opcional: aumentar memoria
+    
+    volumes:
+      # Archivo de configuración (REQUERIDO)
+      - ../.env:/app/.env:ro
+      
+      # Persistir datos descargados
+      - ../descargas:/app/descargas
+      
+      # Opcional: logs
+      - ../logs:/app/logs
+    
+    restart: unless-stopped
+    
+    # Opcional: límites de recursos
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          memory: 1G
+
+# Servicio alternativo: ejecutar bajo demanda
+  placsp-ondemand:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: placsp-workflow:latest
+    container_name: placsp-ondemand
+    command: run
+    profiles:
+      - manual  # Solo se ejecuta con: docker-compose --profile manual up
+    volumes:
+      - ../.env:/app/.env:ro
+      - ../descargas:/app/descargas
+    environment:
+      - TZ=Europe/Madrid
