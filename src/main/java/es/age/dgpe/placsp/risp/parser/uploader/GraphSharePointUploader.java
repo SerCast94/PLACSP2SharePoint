@@ -30,7 +30,7 @@ public class GraphSharePointUploader {
         try {
             File file = new File(localFilePath);
             if (!file.exists()) {
-                System.err.println("  ✗ Archivo no encontrado: " + localFilePath);
+                System.err.println("  [ERROR] Archivo no encontrado: " + localFilePath);
                 return false;
             }
             byte[] fileContent = Files.readAllBytes(file.toPath());
@@ -53,21 +53,21 @@ public class GraphSharePointUploader {
             }
             int responseCode = conn.getResponseCode();
             if (responseCode >= 200 && responseCode < 300) {
-                System.out.println("    ✓ Archivo subido exitosamente por Graph");
+                System.out.println("    [OK] Archivo subido exitosamente por Graph");
                 // Registrar subida exitosa en log
                 double sizeMB = fileContent.length / (1024.0 * 1024.0);
                 PlacspLogger.upload(file.getName(), remotePath, sizeMB, true);
                 return true;
             } else {
                 String error = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8)).lines().reduce("", (a, b) -> a + b);
-                System.err.println("    ✗ Error al subir por Graph (código " + responseCode + "): " + error);
+                System.err.println("    [ERROR] Error al subir por Graph (codigo " + responseCode + "): " + error);
                 // Registrar error en log
                 PlacspLogger.upload(file.getName(), remotePath, false);
                 PlacspLogger.error("Error HTTP " + responseCode + " subiendo " + file.getName() + ": " + error);
                 return false;
             }
         } catch (Exception e) {
-            System.err.println("  ✗ Error al subir archivo por Graph: " + e.getMessage());
+            System.err.println("  [ERROR] Error al subir archivo por Graph: " + e.getMessage());
             // Registrar excepción en log
             PlacspLogger.upload(localFilePath, remotePath, false);
             PlacspLogger.error("Excepción subiendo archivo", e);

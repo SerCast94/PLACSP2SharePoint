@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -25,8 +26,6 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
-
-
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -46,9 +45,10 @@ import ext.place.codice.common.caclib.PreliminaryMarketConsultationStatusType;
 
 /**
  * CLI tool to convert PLACSP RISP ATOM files to Excel using existing logic.
+ * Soporta múltiples archivos ATOM de entrada que se combinan en un único Excel.
  *
  * Usage:
- *   --in <path.atom>       Path to the first ATOM file in the chain
+ *   --in <path.atom>       Path to an ATOM file (puede repetirse para múltiples archivos)
  *   --out <path.xlsx>      Output Excel path
  *   --dos-tablas           Output licitaciones + resultados in two sheets
  *   --sin-emp              Do not include EMP sheet
@@ -56,11 +56,9 @@ import ext.place.codice.common.caclib.PreliminaryMarketConsultationStatusType;
  */
 public class AtomToExcelCLI {
 
-
-
     private static Unmarshaller atomUnMarshaller;
 
-    // EDITA ESTAS RUTAS PARA EJECUCIONES RÁPIDAS SIN ARGUMENTOS
+    // EDITA ESTAS RUTAS PARA EJECUCIONES RAPIDAS SIN ARGUMENTOS
     // Ejemplos:
     // private static String DEFAULT_IN_PATH  = "C:\\datos\\risp\\2025-01-01.atom";
     // private static String DEFAULT_OUT_PATH = "C:\\datos\\salida\\resultado.xlsx";
@@ -76,16 +74,33 @@ public class AtomToExcelCLI {
 
         Path tempDir = null;
         try {
-            // Si el input es .zip, descomprimir y buscar el .atom
-            String actualInPath = parsed.inPath;
-            if (parsed.inPath.toLowerCase().endsWith(".zip")) {
-                System.out.println("Detectado archivo ZIP, extrayendo...");
+            // Procesar cada archivo de entrada
+            List<String> actualInPaths = new ArrayList<>();
+            boolean needsTempDir = false;
+            
+            for (String inPath : parsed.inPaths) {
+                if (inPath.toLowerCase().endsWith(".zip")) {
+                    needsTempDir = true;
+                    break;
+                }
+            }
+            
+            if (needsTempDir) {
                 tempDir = Files.createTempDirectory("atom-extract-");
-                actualInPath = extractAndFindAtom(parsed.inPath, tempDir);
-                System.out.println("Usando archivo extraído: " + actualInPath);
+            }
+            
+            for (String inPath : parsed.inPaths) {
+                if (inPath.toLowerCase().endsWith(".zip")) {
+                    System.out.println("Detectado archivo ZIP, extrayendo: " + inPath);
+                    String extractedAtom = extractAndFindAtom(inPath, tempDir);
+                    System.out.println("Usando archivo extraído: " + extractedAtom);
+                    actualInPaths.add(extractedAtom);
+                } else {
+                    actualInPaths.add(inPath);
+                }
             }
 
-            Args actualArgs = new Args(actualInPath, parsed.outPath, parsed.dosTablas, parsed.sinEMP, parsed.sinCPM, true, 0);
+            Args actualArgs = new Args(actualInPaths, parsed.outPath, parsed.dosTablas, parsed.sinEMP, parsed.sinCPM, true, 0);
             new AtomToExcelCLI().convert(actualArgs);
             System.out.println("Conversión completada: " + parsed.outPath);
         } catch (Exception e) {
@@ -188,124 +203,121 @@ public class AtomToExcelCLI {
             atomUnMarshaller = jc.createUnmarshaller();
 
             // Hojas necesarias
-            System.out.println("Creación de hojas de cálculo");
             SpreeadSheetManager spreeadSheetManager = new SpreeadSheetManager(args.dosTablas, seleccionEncargosMediosPropios.size()>0, seleccionConsultasPreliminares.size()>0);
 
-            System.out.println("Añadiendo títulos");
             insertarTitulos(spreeadSheetManager, seleccionLicitacionGenerales, seleccionLicitacionResultados, seleccionEncargosMediosPropios, seleccionConsultasPreliminares);
             spreeadSheetManager.updateColumnsSize();
 
-            // ATOM inicial
-            File ficheroRISP = new File(args.inPath);
-            String directorioPath = ficheroRISP.getParent();
-            boolean existeFicheroRisp = ficheroRISP.exists() && ficheroRISP.isFile();
-            if (!existeFicheroRisp) {
-                throw new FileNotFoundException("No se puede acceder al fichero: " + args.inPath);
-            }
-
-            File[] lista_ficherosRISP = ficheroRISP.getParentFile().listFiles();
-            if (lista_ficherosRISP != null) {
-                System.out.println("Número previsto de ficheros a procesar: " + lista_ficherosRISP.length);
-            }
-
-            while (existeFicheroRisp) {
-                System.out.println("Procesando fichero: " + ficheroRISP.getName());
-
-                res = null;
-                inStream = new InputStreamReader(new FileInputStream(ficheroRISP), StandardCharsets.UTF_8);
-                res = ((JAXBElement<FeedType>) atomUnMarshaller.unmarshal(inStream)).getValue();
-
-                // entradas borradas
-                if (res.getAny() != null) {
-                    for (int indice = 0; indice < res.getAny().size(); indice++) {
-                        DeletedEntryType deletedEntry = ((JAXBElement<DeletedEntryType>) res.getAny().get(indice)).getValue();
-                        if (!entriesDeleted.containsKey(deletedEntry.getRef())) {
-                            entriesDeleted.put(deletedEntry.getRef(), deletedEntry.getWhen().toGregorianCalendar());
-                        }
-                    }
+            // Procesar cada archivo ATOM de entrada
+            for (String inPath : args.inPaths) {
+                System.out.println("Procesando fuente ATOM: " + inPath);
+                
+                // ATOM inicial
+                File ficheroRISP = new File(inPath);
+                String directorioPath = ficheroRISP.getParent();
+                boolean existeFicheroRisp = ficheroRISP.exists() && ficheroRISP.isFile();
+                if (!existeFicheroRisp) {
+                    System.err.println("  Advertencia: No se puede acceder al fichero: " + inPath);
+                    continue;
                 }
 
-                // recorrer entries
-                numeroEntries += res.getEntry().size();
-                for (EntryType entry : res.getEntry()) {
-                    if (!entriesProcesadas.contains(entry.getId().getValue())) {
-                        GregorianCalendar fechaDeleted = entriesDeleted.get(entry.getId().getValue());
+                File[] lista_ficherosRISP = ficheroRISP.getParentFile().listFiles();
+                if (lista_ficherosRISP != null) {
+                }
 
-                        boolean isCPM = false;
-                        try {
-                            isCPM = ((JAXBElement<?>) entry.getAny().get(0)).getValue() instanceof PreliminaryMarketConsultationStatusType;
-                        } catch (Exception e) {
-                            isCPM = false;
+                while (existeFicheroRisp) {
+
+                    res = null;
+                    inStream = new InputStreamReader(new FileInputStream(ficheroRISP), StandardCharsets.UTF_8);
+                    res = ((JAXBElement<FeedType>) atomUnMarshaller.unmarshal(inStream)).getValue();
+
+                    // entradas borradas
+                    if (res.getAny() != null) {
+                        for (int indice = 0; indice < res.getAny().size(); indice++) {
+                            DeletedEntryType deletedEntry = ((JAXBElement<DeletedEntryType>) res.getAny().get(indice)).getValue();
+                            if (!entriesDeleted.containsKey(deletedEntry.getRef())) {
+                                entriesDeleted.put(deletedEntry.getRef(), deletedEntry.getWhen().toGregorianCalendar());
+                            }
                         }
+                    }
 
-                        if (isCPM) {
-                            if(seleccionConsultasPreliminares.size()>0) {
-                                procesarCPM(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.CPM), fechaDeleted, seleccionConsultasPreliminares);
-                            }
-                        } else {
-                            boolean isEMP = false;
+                    // recorrer entries
+                    numeroEntries += res.getEntry().size();
+                    for (EntryType entry : res.getEntry()) {
+                        if (!entriesProcesadas.contains(entry.getId().getValue())) {
+                            GregorianCalendar fechaDeleted = entriesDeleted.get(entry.getId().getValue());
+
+                            boolean isCPM = false;
                             try {
-                                isEMP = (((JAXBElement<ContractFolderStatusType>) entry.getAny().get(0)).getValue().getTenderResult().get(0).getResultCode().getValue().compareTo("11") == 0);
-                            }
-                            catch(Exception e){
-                                isEMP = false;
+                                isCPM = ((JAXBElement<?>) entry.getAny().get(0)).getValue() instanceof PreliminaryMarketConsultationStatusType;
+                            } catch (Exception e) {
+                                isCPM = false;
                             }
 
-                            if (isEMP) {
-                                if(seleccionEncargosMediosPropios.size()>0) {
-                                    procesarEncargo(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.EMP), fechaDeleted, seleccionEncargosMediosPropios);
+                            if (isCPM) {
+                                if(seleccionConsultasPreliminares.size()>0) {
+                                    procesarCPM(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.CPM), fechaDeleted, seleccionConsultasPreliminares);
                                 }
                             } else {
-                                if (args.dosTablas) {
-                                    procesarEntry(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.LICITACIONES), fechaDeleted, seleccionLicitacionGenerales);
-                                    procesarEntryResultados(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.RESULTADOS), fechaDeleted, seleccionLicitacionResultados);
+                                boolean isEMP = false;
+                                try {
+                                    isEMP = (((JAXBElement<ContractFolderStatusType>) entry.getAny().get(0)).getValue().getTenderResult().get(0).getResultCode().getValue().compareTo("11") == 0);
+                                }
+                                catch(Exception e){
+                                    isEMP = false;
+                                }
+
+                                if (isEMP) {
+                                    if(seleccionEncargosMediosPropios.size()>0) {
+                                        procesarEncargo(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.EMP), fechaDeleted, seleccionEncargosMediosPropios);
+                                    }
                                 } else {
-                                    procesarEntryCompleta(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.LICITACIONES), fechaDeleted, seleccionLicitacionGenerales, seleccionLicitacionResultados);
+                                    if (args.dosTablas) {
+                                        procesarEntry(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.LICITACIONES), fechaDeleted, seleccionLicitacionGenerales);
+                                        procesarEntryResultados(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.RESULTADOS), fechaDeleted, seleccionLicitacionResultados);
+                                    } else {
+                                        procesarEntryCompleta(entry, spreeadSheetManager.getWorkbook().getSheet(SpreeadSheetManager.LICITACIONES), fechaDeleted, seleccionLicitacionGenerales, seleccionLicitacionResultados);
+                                    }
                                 }
                             }
+
+                            entriesProcesadas.add(entry.getId().getValue());
                         }
-
-                        entriesProcesadas.add(entry.getId().getValue());
                     }
-                }
 
-                // siguiente fichero
-                for (LinkType linkType : res.getLink()) {
-                    existeFicheroRisp = false;
-                    if (linkType.getRel().toLowerCase().compareTo("next") == 0) {
-                        String[] tempArray = linkType.getHref().split("/");
-                        String nombreSiguienteRIPS = tempArray[tempArray.length - 1];
-                        ficheroRISP = new File(directorioPath + "/" + nombreSiguienteRIPS);
-                        existeFicheroRisp = ficheroRISP.exists() && ficheroRISP.isFile();
+                    // siguiente fichero
+                    for (LinkType linkType : res.getLink()) {
+                        existeFicheroRisp = false;
+                        if (linkType.getRel().toLowerCase().compareTo("next") == 0) {
+                            String[] tempArray = linkType.getHref().split("/");
+                            String nombreSiguienteRIPS = tempArray[tempArray.length - 1];
+                            ficheroRISP = new File(directorioPath + "/" + nombreSiguienteRIPS);
+                            existeFicheroRisp = ficheroRISP.exists() && ficheroRISP.isFile();
+                        }
                     }
+                    inStream.close();
+                    numeroFicherosProcesados++;
                 }
-                inStream.close();
-                numeroFicherosProcesados++;
+                
+                System.out.println("  Procesados " + numeroFicherosProcesados + " ficheros ATOM de esta fuente");
             }
-
-            System.out.println("Creando el fichero " + args.outPath);
-            System.out.println("Número de ficheros procesados " + numeroFicherosProcesados);
-            System.out.println("Número de elementos entry existentes: " + numeroEntries);
-            System.out.println("Licitaciones insertadas en el fichero: " + entriesProcesadas.size());
 
             spreeadSheetManager.insertarFiltro(seleccionLicitacionGenerales.size(), seleccionLicitacionResultados.size(), seleccionEncargosMediosPropios.size(), seleccionConsultasPreliminares.size());
 
-            System.out.println("Escritura del fichero de salida");
             spreeadSheetManager.getWorkbook().write(output_file);
             output_file.close();
             spreeadSheetManager.getWorkbook().close();
+            
+            System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " únicas");
 
         } catch (JAXBException e) {
             String auxError = "Error al procesar el fichero ATOM. No se puede continuar con el proceso.";
-            System.err.println(auxError);
             throw e;
         } catch (FileNotFoundException e) {
             String auxError = "Error al generar el fichero de salida. No se pudo crear o abrir el fichero indicado.";
-            System.err.println(auxError);
             throw e;
         } catch (Exception e) {
             String auxError = "Error inesperado, revise la configuración y el log...";
-            System.err.println(auxError);
             throw e;
         }
     }
@@ -543,8 +555,8 @@ public class AtomToExcelCLI {
         row = hoja.createRow(0);
         cellnum = 0;
         cell = row.createCell(cellnum++); cell.setCellValue("Identificador"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
-        cell = row.createCell(cellnum++); cell.setCellValue("Link licitación"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
-        cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualización"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
+        cell = row.createCell(cellnum++); cell.setCellValue("Link licitaci\u00F3n"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
+        cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualizaci\u00F3n"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
         cell = row.createCell(cellnum++); cell.setCellValue("Vigente/Anulada/Archivada"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
         for (DatosLicitacionGenerales dato : seleccionLicitacionGenerales) {
             cell = row.createCell(cellnum++); cell.setCellValue(dato.getTiulo()); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
@@ -561,8 +573,8 @@ public class AtomToExcelCLI {
             row = hoja.createRow(0);
             cellnum = 0;
             cell = row.createCell(cellnum++); cell.setCellValue("Identificador"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
-            cell = row.createCell(cellnum++); cell.setCellValue("Link licitación"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
-            cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualización"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
+            cell = row.createCell(cellnum++); cell.setCellValue("Link licitaci\u00F3n"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
+            cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualizaci\u00F3n"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             for (DatosResultados dato : seleccionLicitacionResultados) {
                 cell = row.createCell(cellnum++); cell.setCellValue(dato.getTiulo()); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             }
@@ -575,7 +587,7 @@ public class AtomToExcelCLI {
             cellnum = 0;
             cell = row.createCell(cellnum++); cell.setCellValue("Identificador"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             cell = row.createCell(cellnum++); cell.setCellValue("Link Encargo"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
-            cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualización"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
+            cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualizaci\u00F3n"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             cell = row.createCell(cellnum++); cell.setCellValue("Vigente/Anulada/Archivada"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             for (DatosEMP dato : seleccionEncargosMediosPropios) {
                 cell = row.createCell(cellnum++); cell.setCellValue(dato.getTiulo()); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
@@ -589,7 +601,7 @@ public class AtomToExcelCLI {
             cellnum = 0;
             cell = row.createCell(cellnum++); cell.setCellValue("Identificador"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             cell = row.createCell(cellnum++); cell.setCellValue("Link Consulta"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
-            cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualización"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
+            cell = row.createCell(cellnum++); cell.setCellValue("Fecha actualizaci\u00F3n"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             cell = row.createCell(cellnum++); cell.setCellValue("Vigente/Anulada/Archivada"); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
             for (DatosCPM dato : seleccionConsultasPreliminares) {
                 cell = row.createCell(cellnum++); cell.setCellValue(dato.getTiulo()); cell.setCellStyle(SpreeadSheetManager.getCellStyleTitulo());
@@ -598,7 +610,7 @@ public class AtomToExcelCLI {
     }
 
     private static class Args {
-        final String inPath;
+        final List<String> inPaths;
         final String outPath;
         final boolean dosTablas;
         final boolean sinEMP;
@@ -606,8 +618,8 @@ public class AtomToExcelCLI {
         final boolean valid;
         final int exitCode;
 
-        private Args(String inPath, String outPath, boolean dosTablas, boolean sinEMP, boolean sinCPM, boolean valid, int exitCode) {
-            this.inPath = inPath;
+        private Args(List<String> inPaths, String outPath, boolean dosTablas, boolean sinEMP, boolean sinCPM, boolean valid, int exitCode) {
+            this.inPaths = inPaths;
             this.outPath = outPath;
             this.dosTablas = dosTablas;
             this.sinEMP = sinEMP;
@@ -622,17 +634,20 @@ public class AtomToExcelCLI {
                 boolean haveDefaults = AtomToExcelCLI.DEFAULT_IN_PATH != null && !AtomToExcelCLI.DEFAULT_IN_PATH.isEmpty()
                                      && AtomToExcelCLI.DEFAULT_OUT_PATH != null && !AtomToExcelCLI.DEFAULT_OUT_PATH.isEmpty();
                 if (haveDefaults) {
-                    return new Args(AtomToExcelCLI.DEFAULT_IN_PATH, AtomToExcelCLI.DEFAULT_OUT_PATH, false, false, false, true, 0);
+                    List<String> defaultPaths = new ArrayList<>();
+                    defaultPaths.add(AtomToExcelCLI.DEFAULT_IN_PATH);
+                    return new Args(defaultPaths, AtomToExcelCLI.DEFAULT_OUT_PATH, false, false, false, true, 0);
                 }
-                return new Args(null, null, false, false, false, false, 1);
+                return new Args(new ArrayList<>(), null, false, false, false, false, 1);
             }
-            String in = null, out = null;
+            List<String> inPaths = new ArrayList<>();
+            String out = null;
             boolean dosTablas = false, sinEMP = false, sinCPM = false;
             for (int i = 0; i < args.length; i++) {
                 String a = args[i];
                 switch (a) {
-                    case "--help": return new Args(null, null, false, false, false, false, 0);
-                    case "--in": if (i+1 < args.length) in = args[++i]; break;
+                    case "--help": return new Args(new ArrayList<>(), null, false, false, false, false, 0);
+                    case "--in": if (i+1 < args.length) inPaths.add(args[++i]); break;
                     case "--out": if (i+1 < args.length) out = args[++i]; break;
                     case "--dos-tablas": dosTablas = true; break;
                     case "--sin-emp": sinEMP = true; break;
@@ -640,20 +655,24 @@ public class AtomToExcelCLI {
                     default: break;
                 }
             }
-            boolean ok = in != null && out != null;
+            boolean ok = !inPaths.isEmpty() && out != null;
             // Si faltan argumentos, usamos defaults si están configurados
             if (!ok && AtomToExcelCLI.DEFAULT_IN_PATH != null && !AtomToExcelCLI.DEFAULT_IN_PATH.isEmpty()
                     && AtomToExcelCLI.DEFAULT_OUT_PATH != null && !AtomToExcelCLI.DEFAULT_OUT_PATH.isEmpty()) {
-                in = AtomToExcelCLI.DEFAULT_IN_PATH;
-                out = AtomToExcelCLI.DEFAULT_OUT_PATH;
+                if (inPaths.isEmpty()) {
+                    inPaths.add(AtomToExcelCLI.DEFAULT_IN_PATH);
+                }
+                if (out == null) {
+                    out = AtomToExcelCLI.DEFAULT_OUT_PATH;
+                }
                 ok = true;
             }
-            return new Args(in, out, dosTablas, sinEMP, sinCPM, ok, ok ? 0 : 1);
+            return new Args(inPaths, out, dosTablas, sinEMP, sinCPM, ok, ok ? 0 : 1);
         }
 
         String usage() {
             return "Uso:\n" +
-                   "  --in <path>        Fichero ATOM o ZIP con ATOM dentro\n" +
+                   "  --in <path>        Fichero ATOM o ZIP (puede repetirse para múltiples archivos)\n" +
                    "  --out <path.xlsx>  Fichero Excel de salida\n" +
                    "  [--dos-tablas]     Separar licitaciones y resultados\n" +
                    "  [--sin-emp]        No incluir hoja EMP\n" +
@@ -661,6 +680,8 @@ public class AtomToExcelCLI {
                    "  [--help]           Mostrar esta ayuda\n" +
                    "\nSi --in es un .zip, se descomprimirá automáticamente\n" +
                    "y se buscará el .atom con el mismo nombre.\n" +
+                   "\nPuedes especificar múltiples --in para combinar varias fuentes ATOM\n" +
+                   "en un único archivo Excel.\n" +
                    "\nTambién puedes editar en la clase:\n" +
                    "  DEFAULT_IN_PATH  y DEFAULT_OUT_PATH para ejecutar sin argumentos";
         }

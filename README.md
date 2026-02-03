@@ -8,8 +8,13 @@ Herramienta para descargar datos de la **Plataforma de Contratación del Sector 
 
 ## 🎯 Funcionalidades
 
-- **Descarga automática** de ficheros ZIP desde el portal de datos abiertos de Hacienda
+- **Descarga inteligente** de ficheros ZIP desde el portal de datos abiertos de Hacienda
+  - Si la carpeta `atom/` está vacía: descarga los últimos N meses (configurable)
+  - Si ya hay datos: descarga solo el último ZIP (incremental)
 - **Conversión** de datos ATOM/XML a formato Excel (.xlsx)
+  - Combina ATOMs de múltiples meses en un único Excel
+  - Elimina duplicados automáticamente
+- **Limpieza automática** de ATOMs antiguos (configurable por meses)
 - **Subida automática** a SharePoint mediante Microsoft Graph API
 - **Logging** con rotación automática de 30 días
 
@@ -46,16 +51,89 @@ PLACSP2SharePoint/
 
 ## ⚙️ Configuración
 
+Toda la configuración del programa se centraliza en el archivo `.env`. Esto permite modificar el comportamiento sin recompilar el código.
+
+### Archivo .env
+
 1. Copie `.env.example` a `.env`
-2. Configure las credenciales de Azure AD:
+2. Configure las variables según sus necesidades:
 
 ```ini
+# ============================================================
+# 1. URLs DE DESCARGA
+# ============================================================
+PLACSP_URL_CONTRATANTE=https://www.hacienda.gob.es/es-es/gobiernoabierto/datos%20abiertos/paginas/licitacionescontratante.aspx
+PLACSP_URL_AGREGACION=https://www.hacienda.gob.es/es-es/gobiernoabierto/datos%20abiertos/paginas/licitacionesagregacion.aspx
+
+# ============================================================
+# 2. PATRONES DE BÚSQUEDA (regex)
+# ============================================================
+ZIP_LINK_PATTERN=_(\\d{6})\\.zip$
+ANYO_MES_PATTERN=_(\\d{6})\\.
+FECHA_COMPLETA_PATTERN=_(\\d{8})_
+
+# ============================================================
+# 3. DIRECTORIOS
+# ============================================================
+DOWNLOAD_DIR=descargas
+ATOM_DIR=descargas/atom
+EXCEL_OUTPUT_DIR=descargas/excel
+
+# ============================================================
+# 4. CONFIGURACIÓN DE DESCARGA
+# ============================================================
+MESES_HISTORICO=5              # Meses de histórico a mantener
+HTTP_CONNECT_TIMEOUT=30000     # Timeout conexión (ms)
+HTTP_READ_TIMEOUT=60000        # Timeout lectura (ms)
+DOWNLOAD_BUFFER_SIZE=8192      # Buffer de descarga (bytes)
+DOWNLOAD_PROGRESS_INTERVAL_MB=10  # Intervalo progreso
+
+# ============================================================
+# 5. CONFIGURACIÓN DEL CONVERSOR CLI
+# ============================================================
+CLI_COMMAND=placsp-cli.bat
+CLI_DOS_TABLAS=true            # Separar licitaciones y resultados
+CLI_INCLUIR_EMP=false          # Incluir Encargos Medios Propios
+CLI_INCLUIR_CPM=false          # Incluir Consultas Preliminares
+
+# ============================================================
+# 6. LOGGING
+# ============================================================
+LOG_DIR=logs
+LOG_FILE=placsp.log
+MAX_LOG_DAYS=30                # Días a mantener en el log
+
+# ============================================================
+# 7. SSL
+# ============================================================
+SSL_DISABLE_VALIDATION=true    # Solo para pruebas
+
+# ============================================================
+# 8. NOMBRES DE ARCHIVOS EXCEL
+# ============================================================
+EXCEL_NAME_PERF_CONTRAT=licPerfContratPLACSP
+EXCEL_NAME_AGREGADAS=licPlatafAgregadas
+
+# ============================================================
+# 9. SHAREPOINT (Microsoft Graph API)
+# ============================================================
 SHAREPOINT_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 SHAREPOINT_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 SHAREPOINT_CLIENT_SECRET=tu_secreto_aqui
 SHAREPOINT_URL=https://tenant.sharepoint.com/sites/MiSitio
-SHAREPOINT_LIBRARY=Documentos compartidos/MiCarpeta
+SHAREPOINT_LIBRARY=Colaboración
+SHAREPOINT_DRIVE_NAMES=Documentos compartidos;Documents;Shared Documents
 ```
+
+### Variables principales
+
+| Variable | Descripción | Valor por defecto |
+|----------|-------------|-------------------|
+| `MESES_HISTORICO` | Meses de datos a mantener | `5` |
+| `CLI_INCLUIR_EMP` | Incluir hoja EMP en Excel | `false` |
+| `CLI_INCLUIR_CPM` | Incluir hoja CPM en Excel | `false` |
+| `MAX_LOG_DAYS` | Días de log a conservar | `30` |
+| `SSL_DISABLE_VALIDATION` | Desactivar validación SSL | `true` |
 
 ### Configuración de Azure AD
 
@@ -116,17 +194,42 @@ El log mantiene automáticamente solo las entradas de los últimos 30 días.
 
 ## 🐳 Docker
 
+### Ejecución con Docker Compose
+
 ```bash
 cd docker
+
+# Ejecución programada (cron - todos los días a las 2 AM)
 docker-compose up -d
+
+# Ejecución bajo demanda
+docker-compose --profile manual up placsp-ondemand
 ```
 
-Variables de entorno requeridas en el contenedor:
-- `SHAREPOINT_TENANT_ID`
-- `SHAREPOINT_CLIENT_ID`
-- `SHAREPOINT_CLIENT_SECRET`
-- `SHAREPOINT_URL`
-- `SHAREPOINT_LIBRARY`
+### Variables de entorno
+
+| Variable | Descripción | Requerido |
+|----------|-------------|-----------|
+| `PLACSP_URL_CONTRATANTE` | URL página licitaciones contratante | ❌ (tiene default) |
+| `PLACSP_URL_AGREGACION` | URL página plataformas agregadas | ❌ (tiene default) |
+| `MESES_HISTORICO` | Meses de histórico a mantener | ❌ (default: 5) |
+| `SHAREPOINT_TENANT_ID` | ID del tenant Azure AD | ✅ |
+| `SHAREPOINT_CLIENT_ID` | ID de la aplicación | ✅ |
+| `SHAREPOINT_CLIENT_SECRET` | Secreto de la aplicación | ✅ |
+| `SHAREPOINT_URL` | URL del sitio SharePoint | ✅ |
+| `SHAREPOINT_LIBRARY` | Carpeta destino en SharePoint | ✅ |
+| `CLI_INCLUIR_EMP` | Incluir hoja EMP | ❌ (default: false) |
+| `CLI_INCLUIR_CPM` | Incluir hoja CPM | ❌ (default: false) |
+| `MAX_LOG_DAYS` | Días de log a conservar | ❌ (default: 30) |
+| `CRON_SCHEDULE` | Horario cron (Docker) | ❌ (default: `0 2 * * *`) |
+| `TZ` | Zona horaria | ❌ (default: `Europe/Madrid`) |
+| `JAVA_OPTS` | Opciones JVM (ej: `-Xmx4g`) | ❌ |
+
+### Volúmenes
+
+- `/app/.env` - Archivo de configuración (montaje obligatorio)
+- `/app/descargas` - Datos descargados y ATOMs extraídos
+- `/app/logs` - Archivos de log
 
 ## 📋 Requisitos
 
@@ -151,4 +254,4 @@ Consulte la carpeta `licenses/` para más detalles.
 
 ---
 
-**Fuente de datos**: [Portal de Datos Abiertos - Ministerio de Hacienda](https://www.hacienda.gob.es/es-ES/GobiernoAbierto/Datos%20Abiertos/Paginas/Catalogodatosabiertos.aspx)
+**Fuente de datos**: [Portal de Datos Abiertos - Ministerio de Hacienda](https://www.hacienda.gob.es/es-ES/GobiernoAbierto/Datos%20Abiertos/Paginas/licitaciones_plataforma_contratacion.aspx)

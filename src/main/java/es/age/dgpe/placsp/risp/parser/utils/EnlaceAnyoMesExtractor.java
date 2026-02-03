@@ -215,10 +215,10 @@ public class EnlaceAnyoMesExtractor {
                 
                 // Mostrar tamaño final
                 double finalSizeMB = totalBytesRead / (1024.0 * 1024.0);
-                System.out.printf("    ✓ Descarga completada: %s (%.2f MB)%n", nombreArchivo, finalSizeMB);
+                System.out.printf("    [OK] Descarga completada: %s (%.2f MB)%n", nombreArchivo, finalSizeMB);
             }
         } catch (Exception e) {
-            System.err.println("    ✗ Error al descargar: " + e.getMessage());
+            System.err.println("    [ERROR] Error al descargar: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -356,7 +356,7 @@ public class EnlaceAnyoMesExtractor {
                 // Convertir ZIP a Excel usando el CLI
                 convertirZipAExcelCLI(zipFile.toString(), excelPath.toString());
                 
-                System.out.println("  ✓ Conversión completada\n");
+                System.out.println("  [OK] Conversion completada\n");
             }
             
             System.out.println("Todos los archivos ZIP han sido convertidos.");
@@ -402,7 +402,7 @@ public class EnlaceAnyoMesExtractor {
             int exitCode = process.waitFor();
             
             if (exitCode != 0) {
-                System.err.println("  ✗ Error al convertir ZIP");
+                System.err.println("  [ERROR] Error al convertir ZIP");
             }
             
         } catch (Exception e) {

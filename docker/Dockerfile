@@ -3,7 +3,8 @@ FROM eclipse-temurin:21-jdk-alpine
 
 # Metadatos
 LABEL maintainer="PlacspWorkflow"
-LABEL description="Descarga y conversión de datos PLACSP a Excel"
+LABEL description="Descarga y conversión de datos PLACSP a Excel con subida a SharePoint"
+LABEL version="2.0"
 
 # Instalar dependencias del sistema (incluyendo cron para ejecución programada)
 RUN apk add --no-cache curl unzip dcron tzdata
@@ -19,7 +20,7 @@ COPY src/ ./src/
 COPY pom.xml ./
 
 # Crear directorios necesarios
-RUN mkdir -p target/classes descargas descargas/excel logs
+RUN mkdir -p target/classes descargas descargas/atom descargas/excel logs
 
 # Compilar las clases model (encoding Windows-1252)
 RUN javac -encoding Cp1252 -d target/classes -cp "lib/*" \
@@ -41,7 +42,10 @@ COPY target/classes/templates/ ./target/classes/templates/
 COPY target/classes/*.properties ./target/classes/
 COPY target/classes/*.xml ./target/classes/
 
-# Volumen para datos descargados y generados
+# Volúmenes para persistencia
+# - descargas/atom: ATOMs extraídos (acumulativo)
+# - descargas/excel: Excel generados (temporal, se eliminan tras subir)
+# - logs: Archivo de log con rotación 30 días
 VOLUME ["/app/descargas", "/app/logs"]
 
 # Variables de entorno

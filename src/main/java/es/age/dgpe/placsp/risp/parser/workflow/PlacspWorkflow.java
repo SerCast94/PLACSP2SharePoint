@@ -6,15 +6,14 @@ import es.age.dgpe.placsp.risp.parser.converter.AtomToExcelConverter;
 import es.age.dgpe.placsp.risp.parser.uploader.OAuth2TokenHelper;
 import es.age.dgpe.placsp.risp.parser.uploader.GraphHelper;
 import es.age.dgpe.placsp.risp.parser.uploader.GraphSharePointUploader;
+import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
 import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 /**
  * Orquestador principal del flujo de trabajo PLACSP.
@@ -33,68 +32,30 @@ public class PlacspWorkflow {
     private final AtomToExcelConverter converter;
 
     static {
-        // Desactivar validación SSL para pruebas
-        try {
-            javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
-                new javax.net.ssl.X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return null;
+        // Desactivar validación SSL si está configurado (solo para pruebas)
+        if (EnvConfig.isSslDisableValidation()) {
+            try {
+                javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
+                    new javax.net.ssl.X509TrustManager() {
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return null;
+                        }
+                        public void checkClientTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                        }
+                        public void checkServerTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                        }
                     }
-                    public void checkClientTrusted(
-                        java.security.cert.X509Certificate[] certs, String authType) {
-                    }
-                    public void checkServerTrusted(
-                        java.security.cert.X509Certificate[] certs, String authType) {
-                    }
-                }
-            };
-            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("SSL");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Cache de variables del .env cargadas con UTF-8
-    private static Map<String, String> envConfig = null;
-
-    /**
-     * Carga las variables del archivo .env con codificación UTF-8.
-     * Necesario porque el batch de Windows no maneja bien UTF-8 con tildes.
-     */
-    private static void loadEnvFile() {
-        if (envConfig != null) return;
-        envConfig = new HashMap<>();
-        try {
-            java.io.File envFile = new java.io.File(".env");
-            if (envFile.exists()) {
-                java.util.List<String> lines = Files.readAllLines(envFile.toPath(), StandardCharsets.UTF_8);
-                for (String line : lines) {
-                    line = line.trim();
-                    if (line.isEmpty() || line.startsWith("#")) continue;
-                    int idx = line.indexOf('=');
-                    if (idx > 0) {
-                        String key = line.substring(0, idx).trim();
-                        String value = line.substring(idx + 1).trim();
-                        envConfig.put(key, value);
-                    }
-                }
+                };
+                javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("SSL");
+                sc.init(null, trustAllCerts, new java.security.SecureRandom());
+                HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+                HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            System.err.println("Error cargando .env: " + e.getMessage());
         }
-    }
-
-    /**
-     * Obtiene una variable de configuración, primero del .env (UTF-8), luego de System.getenv.
-     */
-    private static String getConfig(String key) {
-        loadEnvFile();
-        String value = envConfig.get(key);
-        if (value != null) return value;
-        return System.getenv(key);
     }
 
     /**
@@ -113,8 +74,11 @@ public class PlacspWorkflow {
      * @throws IOException si hay error en las operaciones de I/O
      */
     public void ejecutar(String[] urls) throws IOException {
-        String downloadDir = "descargas";
-        String excelDir = "descargas/excel";
+        // Obtener configuración de directorios desde .env
+        String downloadDir = EnvConfig.getDownloadDir();
+        String atomDir = EnvConfig.getAtomDir();
+        String excelDir = EnvConfig.getExcelDir();
+        int mesesHistorico = EnvConfig.getMesesHistorico();
         
         long startTime = System.currentTimeMillis();
         
@@ -128,15 +92,22 @@ public class PlacspWorkflow {
         
         // Crear directorios
         Files.createDirectories(Paths.get(downloadDir));
+        Files.createDirectories(Paths.get(atomDir));
         Files.createDirectories(Paths.get(excelDir));
         
+        // Verificar si la carpeta atom está vacía
+        boolean atomVacio = esCarpetaVacia(atomDir);
+        int numZipsDescargar = atomVacio ? mesesHistorico : 1;
+        
+        System.out.println("[VERIFICACION] Carpeta atom: " + (atomVacio ? "VACIA - descargando ultimos " + numZipsDescargar + " ZIPs" : "CON ARCHIVOS - descargando solo el ultimo ZIP"));
+        
         // Fase 1: Descargar archivos
-        System.out.println("[FASE 1] Descargando archivos ZIP...");
-        descargarArchivos(urls, downloadDir);
+        System.out.println("\n[FASE 1] Descargando archivos ZIP...");
+        descargarArchivos(urls, downloadDir, numZipsDescargar);
         
         // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresión automáticamente)
         System.out.println("\n[FASE 2] Convirtiendo archivos ZIP a Excel...");
-        converter.convertirTodosZipAExcel(downloadDir, excelDir);
+        converter.convertirTodosZipAExcel(downloadDir, excelDir, atomDir, mesesHistorico);
         
         // Limpiar archivos ZIP después de convertir
         System.out.println("\n[LIMPIEZA] Eliminando archivos ZIP...");
@@ -160,30 +131,52 @@ public class PlacspWorkflow {
         // Resumen final
         converter.mostrarResumen(excelDir);
     }
+    
+    /**
+     * Verifica si una carpeta está vacía o no existe.
+     * 
+     * @param dirPath Ruta de la carpeta
+     * @return true si está vacía o no existe
+     */
+    private boolean esCarpetaVacia(String dirPath) {
+        java.io.File folder = new java.io.File(dirPath);
+        if (!folder.exists() || !folder.isDirectory()) {
+            return true;
+        }
+        String[] archivos = folder.list();
+        return archivos == null || archivos.length == 0;
+    }
 
     /**
      * Descarga archivos ZIP de las URLs especificadas.
      * 
      * @param urls URLs de las páginas web donde buscar enlaces
      * @param downloadDir Directorio de descarga
+     * @param cantidad Número de archivos a descargar por cada URL
      * @throws IOException si hay error en las operaciones
      */
-    private void descargarArchivos(String[] urls, String downloadDir) throws IOException {
+    private void descargarArchivos(String[] urls, String downloadDir, int cantidad) throws IOException {
         for (String url : urls) {
             System.out.println("  Buscando en: " + url);
-            String enlace = webScraper.extraerPrimerEnlaceAnyoMes(url);
             
-            if (enlace != null) {
-                System.out.println("  Enlace encontrado: " + enlace);
+            // Obtener los N enlaces más recientes (ordenados de más antiguo a más reciente)
+            List<String> enlaces = webScraper.extraerEnlacesAnyoMes(url, cantidad);
+            
+            if (!enlaces.isEmpty()) {
+                System.out.println("  Encontrados " + enlaces.size() + " enlaces");
                 
-                // Extraer nombre original del archivo de la URL
-                String nombreOriginal = webScraper.extraerNombreArchivo(enlace);
-                String nombreArchivo = downloadDir + "/" + nombreOriginal;
-                
-                System.out.println("  Descargando: " + nombreOriginal);
-                fileDownloader.descargarArchivo(enlace, nombreArchivo);
+                for (String enlace : enlaces) {
+                    System.out.println("  Enlace encontrado: " + enlace);
+                    
+                    // Extraer nombre original del archivo de la URL
+                    String nombreOriginal = webScraper.extraerNombreArchivo(enlace);
+                    String nombreArchivo = downloadDir + "/" + nombreOriginal;
+                    
+                    System.out.println("  Descargando: " + nombreOriginal);
+                    fileDownloader.descargarArchivo(enlace, nombreArchivo);
+                }
             } else {
-                System.out.println("  No se encontró enlace AÑOMES.");
+                System.out.println("  No se encontro enlace ANYOMES.");
             }
         }
     }
@@ -195,23 +188,23 @@ public class PlacspWorkflow {
      */
     private void subirASharePoint(String excelDir) {
         try {
-            // Leer credenciales para OAuth2 (usando getConfig para UTF-8)
-            String tenantId = getConfig("SHAREPOINT_TENANT_ID");
-            String clientId = getConfig("SHAREPOINT_CLIENT_ID");
-            String clientSecret = getConfig("SHAREPOINT_CLIENT_SECRET");
-            String siteUrl = getConfig("SHAREPOINT_URL");
-            String library = getConfig("SHAREPOINT_LIBRARY");
+            // Leer credenciales para OAuth2 desde EnvConfig
+            String tenantId = EnvConfig.get("SHAREPOINT_TENANT_ID");
+            String clientId = EnvConfig.get("SHAREPOINT_CLIENT_ID");
+            String clientSecret = EnvConfig.get("SHAREPOINT_CLIENT_SECRET");
+            String siteUrl = EnvConfig.get("SHAREPOINT_URL");
+            String library = EnvConfig.get("SHAREPOINT_LIBRARY");
             if (tenantId == null || clientId == null || clientSecret == null || siteUrl == null || library == null) {
-                System.out.println("  ℹ SharePoint OAuth2 no configurado. Omitiendo fase de carga.");
+                System.out.println("  [INFO] SharePoint OAuth2 no configurado. Omitiendo fase de carga.");
                 return;
             }
             System.out.println("  Obteniendo token OAuth2...");
             String token = OAuth2TokenHelper.getAccessToken(tenantId, clientId, clientSecret);
             if (token == null) {
-                System.err.println("  ✗ No se pudo obtener el token OAuth2");
+                System.err.println("  [ERROR] No se pudo obtener el token OAuth2");
                 return;
             }
-            System.out.println("  ✓ Token obtenido");
+            System.out.println("  [OK] Token obtenido");
 
             // Obtener siteId y driveId usando Graph
             String hostname = siteUrl.replace("https://", "").split("/", 2)[0];
@@ -219,41 +212,54 @@ public class PlacspWorkflow {
             System.out.println("  Buscando siteId y driveId por Graph...");
             String siteId = GraphHelper.getSiteId(hostname, sitePath, token);
             if (siteId == null) {
-                System.err.println("  ✗ No se pudo obtener el siteId");
+                System.err.println("  [ERROR] No se pudo obtener el siteId");
                 return;
             }
             // Mostrar todos los drives para depuración
             GraphHelper.listDrives(siteId, token);
             
-            // Buscar el driveId usando múltiples estrategias de fallback
+            // Buscar el driveId usando nombres configurados o estrategias de fallback
             String driveId = null;
             String driveDisplayName = null;
             
-            // 1. Intentar 'Documentos compartidos' (español)
-            driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Documentos compartidos");
-            if (driveId != null) {
-                driveDisplayName = "Documentos compartidos";
-            }
-            
-            // 2. Si no, intentar 'Documents' (inglés)
-            if (driveId == null) {
-                driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Documents");
-                if (driveId != null) {
-                    driveDisplayName = "Documents";
+            // Primero intentar con los nombres configurados en SHAREPOINT_DRIVE_NAMES
+            String[] driveNames = EnvConfig.getSharePointDriveNames();
+            if (driveNames.length > 0) {
+                for (String driveName : driveNames) {
+                    driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, driveName);
+                    if (driveId != null) {
+                        driveDisplayName = driveName;
+                        break;
+                    }
                 }
-            }
-            
-            // 3. Si no, intentar 'Shared Documents'
-            if (driveId == null) {
-                driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Shared Documents");
+            } else {
+                // Usar nombres por defecto si no hay configuración
+                // 1. Intentar 'Documentos compartidos' (español)
+                driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Documentos compartidos");
                 if (driveId != null) {
-                    driveDisplayName = "Shared Documents";
+                    driveDisplayName = "Documentos compartidos";
+                }
+                
+                // 2. Si no, intentar 'Documents' (inglés)
+                if (driveId == null) {
+                    driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Documents");
+                    if (driveId != null) {
+                        driveDisplayName = "Documents";
+                    }
+                }
+                
+                // 3. Si no, intentar 'Shared Documents'
+                if (driveId == null) {
+                    driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Shared Documents");
+                    if (driveId != null) {
+                        driveDisplayName = "Shared Documents";
+                    }
                 }
             }
             
             // 4. Si no, usar el drive por defecto
             if (driveId == null) {
-                System.out.println("  ℹ No se encontró biblioteca estándar, usando drive por defecto...");
+                System.out.println("  [INFO] No se encontro biblioteca estandar, usando drive por defecto...");
                 driveId = GraphHelper.getDefaultDriveId(siteId, token);
                 if (driveId != null) {
                     driveDisplayName = "(por defecto)";
@@ -261,21 +267,21 @@ public class PlacspWorkflow {
             }
             
             if (driveId == null) {
-                System.err.println("  ✗ No se pudo obtener ningún driveId");
+                System.err.println("  [ERROR] No se pudo obtener ningun driveId");
                 return;
             }
-            System.out.println("  ✓ siteId: " + siteId);
-            System.out.println("  ✓ driveId (" + driveDisplayName + "): " + driveId);
+            System.out.println("  [OK] siteId: " + siteId);
+            System.out.println("  [OK] driveId (" + driveDisplayName + "): " + driveId);
 
             GraphSharePointUploader uploader = new GraphSharePointUploader(token, siteId, driveId);
             java.io.File folder = new java.io.File(excelDir);
             if (!folder.exists()) {
-                System.out.println("  ℹ No hay directorio de Excel. Omitiendo carga.");
+                System.out.println("  [INFO] No hay directorio de Excel. Omitiendo carga.");
                 return;
             }
             java.io.File[] excelFiles = folder.listFiles((dir, name) -> name.endsWith(".xlsx"));
             if (excelFiles == null || excelFiles.length == 0) {
-                System.out.println("  ℹ No hay archivos Excel para subir.");
+                System.out.println("  [INFO] No hay archivos Excel para subir.");
                 return;
             }
             int exitosos = 0;
@@ -292,22 +298,22 @@ public class PlacspWorkflow {
                     // Imprimir la ruta destino en consola para depuración de codificación
                     System.out.println("    [DEBUG] Ruta destino (UTF-8): " + destino);
                     if (uploader.uploadFile(file.getAbsolutePath(), destino)) {
-                        System.out.println("    ✓ Subido: " + file.getName());
+                        System.out.println("    [OK] Subido: " + file.getName());
                         exitosos++;
                         // Eliminar archivo local después de subir exitosamente
                         if (file.delete()) {
-                            System.out.println("    ✓ Eliminado localmente: " + file.getName());
+                            System.out.println("    [OK] Eliminado localmente: " + file.getName());
                         }
                     } else {
-                        System.err.println("    ✗ Error al subir: " + file.getName());
+                        System.err.println("    [ERROR] Error al subir: " + file.getName());
                     }
                 } catch (Exception e) {
-                    System.err.println("    ✗ Error: " + e.getMessage());
+                    System.err.println("    [ERROR] Error: " + e.getMessage());
                 }
             }
             System.out.println("  Resumen: " + exitosos + "/" + excelFiles.length + " archivos subidos exitosamente.");
         } catch (Exception e) {
-            System.err.println("  ✗ Error en SharePoint: " + e.getMessage());
+            System.err.println("  [ERROR] Error en SharePoint: " + e.getMessage());
         }
     }
 
@@ -322,13 +328,13 @@ public class PlacspWorkflow {
         if (zipFiles != null && zipFiles.length > 0) {
             for (java.io.File zipFile : zipFiles) {
                 if (zipFile.delete()) {
-                    System.out.println("  ✓ Eliminado: " + zipFile.getName());
+                    System.out.println("  [OK] Eliminado: " + zipFile.getName());
                 } else {
-                    System.err.println("  ✗ No se pudo eliminar: " + zipFile.getName());
+                    System.err.println("  [ERROR] No se pudo eliminar: " + zipFile.getName());
                 }
             }
         } else {
-            System.out.println("  ℹ No hay archivos ZIP para eliminar.");
+            System.out.println("  [INFO] No hay archivos ZIP para eliminar.");
         }
     }
 
@@ -339,10 +345,8 @@ public class PlacspWorkflow {
      * @throws IOException si hay error en las operaciones
      */
     public static void main(String[] args) throws IOException {
-        String[] urls = {
-            "https://www.hacienda.gob.es/es-es/gobiernoabierto/datos%20abiertos/paginas/licitacionescontratante.aspx",
-            "https://www.hacienda.gob.es/es-es/gobiernoabierto/datos%20abiertos/paginas/licitacionesagregacion.aspx"
-        };
+        // Obtener URLs desde configuración .env
+        String[] urls = EnvConfig.getUrls();
 
         PlacspWorkflow workflow = new PlacspWorkflow();
         workflow.ejecutar(urls);

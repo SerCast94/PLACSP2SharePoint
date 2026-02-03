@@ -14,9 +14,14 @@ import java.util.List;
  * 
  * Características:
  * - Un único archivo de log (placsp.log)
- * - Conserva automáticamente solo las líneas de los últimos 30 días
+ * - Conserva automáticamente solo las líneas de los últimos N días (configurable)
  * - Registro de descargas, subidas y errores
  * - Formato estructurado con timestamp
+ * 
+ * Parámetros configurables desde .env:
+ * - LOG_DIR: Directorio de logs
+ * - LOG_FILE: Nombre del archivo de log
+ * - MAX_LOG_DAYS: Días máximos de antigüedad
  * 
  * Uso:
  *   PlacspLogger.info("Mensaje informativo");
@@ -26,10 +31,10 @@ import java.util.List;
  */
 public class PlacspLogger {
 
-    // Configuración
-    private static final String LOG_DIR = "logs";
-    private static final String LOG_FILE = "placsp.log";
-    private static final int MAX_LOG_DAYS = 30;
+    // Configuración cargada desde EnvConfig
+    private static String LOG_DIR;
+    private static String LOG_FILE;
+    private static int MAX_LOG_DAYS;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -61,6 +66,10 @@ public class PlacspLogger {
      * Constructor privado (singleton).
      */
     private PlacspLogger() {
+        // Cargar configuración desde EnvConfig
+        LOG_DIR = EnvConfig.getLogDir();
+        LOG_FILE = EnvConfig.getLogFile();
+        MAX_LOG_DAYS = EnvConfig.getMaxLogDays();
         initializeLogger();
     }
 
@@ -83,7 +92,7 @@ public class PlacspLogger {
             Files.createDirectories(Paths.get(LOG_DIR));
             logPath = Paths.get(LOG_DIR, LOG_FILE);
 
-            // Limpiar líneas antiguas (más de 30 días)
+            // Limpiar líneas antiguas (más de N días según configuración)
             cleanOldLines();
 
             // Abrir archivo de log en modo append
@@ -188,7 +197,7 @@ public class PlacspLogger {
         }
     }
 
-    // ========== MÉTODOS ESTÁTICOS PÚBLICOS ==========
+    // ========== METODOS ESTATICOS PUBLICOS ==========
 
     /**
      * Registra un mensaje informativo.
