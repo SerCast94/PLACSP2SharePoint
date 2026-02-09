@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.time.LocalDate;
 
 import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
@@ -25,7 +24,7 @@ import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
  * Clase responsable de convertir archivos ZIP/ATOM a formato Excel.
  * Utiliza el CLI de PLACSP2SharePoint para realizar las conversiones.
  * 
- * Parámetros configurables desde .env:
+ * ParÃ¡metros configurables desde .env:
  * - CLI_COMMAND: Comando del CLI a ejecutar
  * - CLI_DOS_TABLAS, CLI_INCLUIR_EMP, CLI_INCLUIR_CPM: Opciones del CLI
  * - ANYO_MES_PATTERN, FECHA_COMPLETA_PATTERN: Patrones de fechas
@@ -33,12 +32,12 @@ import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
  */
 public class AtomToExcelConverter {
 
-    // Patrones cargados desde configuración
+    // Patrones cargados desde configuraciÃ³n
     private final Pattern anyoMesPattern;
     private final Pattern fechaCompletaPattern;
 
     /**
-     * Constructor que carga configuración desde .env
+     * Constructor que carga configuraciÃ³n desde .env
      */
     public AtomToExcelConverter() {
         this.anyoMesPattern = EnvConfig.getAnyoMesPattern();
@@ -46,7 +45,7 @@ public class AtomToExcelConverter {
     }
 
     /**
-     * Construye los argumentos del CLI según la configuración
+     * Construye los argumentos del CLI segÃºn la configuraciÃ³n
      */
     private List<String> buildCliArgs(String inputPath, String outputPath) {
         List<String> args = new ArrayList<>();
@@ -61,7 +60,7 @@ public class AtomToExcelConverter {
         if (EnvConfig.isCliDosTablas()) {
             args.add("--dos-tablas");
         }
-        // Nota: La lógica aquí es invertida porque el CLI usa --sin-xxx
+        // Nota: La lÃ³gica aquÃ­ es invertida porque el CLI usa --sin-xxx
         // pero en el .env usamos CLI_INCLUIR_xxx para mayor claridad
         if (!EnvConfig.isCliIncluirEmp()) {
             args.add("--sin-emp");
@@ -83,7 +82,7 @@ public class AtomToExcelConverter {
         try {
             System.out.println("  Procesando ZIP...");
             
-            // Construir argumentos del CLI desde configuración
+            // Construir argumentos del CLI desde configuraciÃ³n
             List<String> args = buildCliArgs(zipFilePath, excelFilePath);
             
             ProcessBuilder pb = new ProcessBuilder(args);
@@ -130,7 +129,7 @@ public class AtomToExcelConverter {
         try {
             System.out.println("  Procesando ATOM...");
             
-            // Construir argumentos del CLI desde configuración
+            // Construir argumentos del CLI desde configuraciÃ³n
             List<String> args = buildCliArgs(atomFilePath, excelFilePath);
             
             ProcessBuilder pb = new ProcessBuilder(args);
@@ -169,13 +168,13 @@ public class AtomToExcelConverter {
 
     /**
      * Convierte todos los archivos ZIP de un directorio a Excel.
-     * Si hay múltiples ZIPs del mismo tipo, los descomprime en orden (antiguo a nuevo)
+     * Si hay mÃºltiples ZIPs del mismo tipo, los descomprime en orden (antiguo a nuevo)
      * y genera UN solo Excel por tipo, usando todos los ATOMs acumulados.
      * 
      * @param zipDir Directorio con archivos ZIP
      * @param excelDir Directorio de salida para archivos Excel
-     * @param atomDir Directorio donde guardar los archivos ATOM extraídos
-     * @param mesesAntiguedad Número de meses de antigüedad máxima para los archivos ATOM
+     * @param atomDir Directorio donde guardar los archivos ATOM extraÃ­dos
+     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima para los archivos ATOM
      */
     public void convertirTodosZipAExcel(String zipDir, String excelDir, String atomDir, int mesesAntiguedad) {
         try {
@@ -189,7 +188,7 @@ public class AtomToExcelConverter {
             List<Path> zipFiles = Files.list(dirPath)
                 .filter(path -> path.toString().toLowerCase().endsWith(".zip"))
                 .sorted((a, b) -> {
-                    // Ordenar por fecha (YYYYMM) de más antiguo a más reciente
+                    // Ordenar por fecha (YYYYMM) de mÃ¡s antiguo a mÃ¡s reciente
                     int fechaA = extraerFecha(a.getFileName().toString());
                     int fechaB = extraerFecha(b.getFileName().toString());
                     return Integer.compare(fechaA, fechaB);
@@ -216,7 +215,7 @@ public class AtomToExcelConverter {
                 }
             }
             
-            // Procesar cada grupo usando nombres de Excel desde configuración
+            // Procesar cada grupo usando nombres de Excel desde configuraciÃ³n
             if (!zipsPerfContrat.isEmpty()) {
                 System.out.println("=== Procesando " + zipsPerfContrat.size() + " ZIPs de Perfiles Contratante ===\n");
                 procesarGrupoZips(zipsPerfContrat, excelDir, atomDir, EnvConfig.getExcelNamePerfContrat(), mesesAntiguedad);
@@ -238,7 +237,7 @@ public class AtomToExcelConverter {
      * Procesa un grupo de ZIPs del mismo tipo.
      * Extrae los ATOMs en orden (antiguo a nuevo) y genera UN solo Excel.
      * 
-     * @param mesesAntiguedad Número de meses de antigüedad máxima para limpiar ATOMs
+     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima para limpiar ATOMs
      */
     private void procesarGrupoZips(List<Path> zipFiles, String excelDir, String atomDir, String nombreExcel, int mesesAntiguedad) {
         try {
@@ -256,7 +255,7 @@ public class AtomToExcelConverter {
                 extraerAtomDeZip(zipFile.toString(), atomDir);
             }
             
-            // 1.5. Limpiar ATOMs antiguos (más de N meses)
+            // 1.5. Limpiar ATOMs antiguos (mÃ¡s de N meses)
             limpiarAtomsAntiguos(atomDir, nombreExcel, mesesAntiguedad);
             
             // 2. Obtener todos los ATOMs de la carpeta, ordenados por fecha
@@ -288,8 +287,8 @@ public class AtomToExcelConverter {
                 System.out.println("    - " + atom.getFileName());
             }
             
-            // 3. Generar UN solo Excel usando el ATOM principal (el primero/más antiguo)
-            // Este es el archivo completo, los demás son incrementales
+            // 3. Generar UN solo Excel usando el ATOM principal (el primero/mÃ¡s antiguo)
+            // Este es el archivo completo, los demÃ¡s son incrementales
             Path atomPrincipal = atomFiles.get(0);
             Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
             
@@ -308,7 +307,7 @@ public class AtomToExcelConverter {
     
     /**
      * Extrae TODOS los archivos ATOM de un ZIP y los guarda en el directorio especificado.
-     * @return Número de archivos ATOM extraídos
+     * @return NÃºmero de archivos ATOM extraÃ­dos
      */
     private int extraerAtomDeZip(String zipFilePath, String atomDir) {
         int contadorExtraidos = 0;
@@ -347,16 +346,16 @@ public class AtomToExcelConverter {
     }
     
     /**
-     * Elimina los archivos ATOM que tienen más de N meses de antigüedad.
-     * La comparación se hace día a día para una limpieza precisa.
+     * Elimina los archivos ATOM que tienen mÃ¡s de N meses de antigÃ¼edad.
+     * La comparaciÃ³n se hace dÃ­a a dÃ­a para una limpieza precisa.
      * 
-     * @param atomDir Directorio donde están los archivos ATOM
+     * @param atomDir Directorio donde estÃ¡n los archivos ATOM
      * @param tipoExcel Tipo de archivo para filtrar (PerfContrat o Agregadas)
-     * @param mesesAntiguedad Número de meses de antigüedad máxima
+     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima
      */
     private void limpiarAtomsAntiguos(String atomDir, String tipoExcel, int mesesAntiguedad) {
         try {
-            // Calcular la fecha límite (hace N meses exactos desde hoy)
+            // Calcular la fecha lÃ­mite (hace N meses exactos desde hoy)
             LocalDate fechaHoy = LocalDate.now();
             LocalDate fechaLimite = fechaHoy.minusMonths(mesesAntiguedad);
             
@@ -375,7 +374,7 @@ public class AtomToExcelConverter {
                     LocalDate fechaAtom = extraerFechaCompleta(path.getFileName().toString());
                     // Si no tiene fecha en el nombre, es el archivo principal, no eliminar
                     if (fechaAtom == null) return false;
-                    // Eliminar si es anterior a la fecha límite
+                    // Eliminar si es anterior a la fecha lÃ­mite
                     return fechaAtom.isBefore(fechaLimite);
                 })
                 .collect(Collectors.toList());
@@ -454,7 +453,7 @@ public class AtomToExcelConverter {
             
             double totalSizeMB = totalSize / (1024.0 * 1024.0);
             System.out.printf("\nTotal: %d archivos, %.2f MB%n", excelFiles.size(), totalSizeMB);
-            System.out.println("Ubicación: " + excelDir);
+            System.out.println("UbicaciÃ³n: " + excelDir);
         } catch (IOException e) {
             System.err.println("Error al mostrar resumen: " + e.getMessage());
         }

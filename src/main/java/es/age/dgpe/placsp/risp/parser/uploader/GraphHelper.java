@@ -2,7 +2,7 @@ package es.age.dgpe.placsp.risp.parser.uploader;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.util.Scanner;
 
 public class GraphHelper {
@@ -11,13 +11,16 @@ public class GraphHelper {
              */
             public static String getDriveIdByDisplayName(String siteId, String accessToken, String displayName) throws IOException {
         String url = "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drives";
-        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Authorization", "Bearer " + accessToken);
         conn.setRequestProperty("Accept", "application/json");
         int responseCode = conn.getResponseCode();
         if (responseCode == 200) {
-            String response = new Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A").next();
+            String response;
+            try (Scanner scanner = new Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A")) {
+                response = scanner.next();
+            }
             // Buscar el displayName en el JSON
             String[] items = response.split("\\{" );
             for (String item : items) {
@@ -37,8 +40,10 @@ public class GraphHelper {
                 }
             }
         } else {
-            String error = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A").next();
-            System.err.println("Error buscando driveId por displayName: " + error);
+            try (Scanner scanner = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A")) {
+                String error = scanner.next();
+                System.err.println("Error buscando driveId por displayName: " + error);
+            }
         }
         return null;
             }
@@ -47,7 +52,7 @@ public class GraphHelper {
          */
         public static void listDrives(String siteId, String accessToken) throws IOException {
             String url = "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drives";
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Authorization", "Bearer " + accessToken);
             conn.setRequestProperty("Accept", "application/json");
@@ -55,8 +60,10 @@ public class GraphHelper {
             if (responseCode == 200) {
                 // Drives listados correctamente (output silenciado)
             } else {
-                String error = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A").next();
-                System.err.println("Error listando drives: " + error);
+                try (Scanner scanner = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A")) {
+                    String error = scanner.next();
+                    System.err.println("Error listando drives: " + error);
+                }
             }
         }
     /**
@@ -64,13 +71,16 @@ public class GraphHelper {
      */
     public static String getSiteId(String hostname, String sitePath, String accessToken) throws IOException {
         String url = "https://graph.microsoft.com/v1.0/sites/" + hostname + ":" + sitePath;
-        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Authorization", "Bearer " + accessToken);
         conn.setRequestProperty("Accept", "application/json");
         int responseCode = conn.getResponseCode();
         if (responseCode == 200) {
-            String response = new Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A").next();
+            String response;
+            try (Scanner scanner = new Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A")) {
+                response = scanner.next();
+            }
             int i = response.indexOf("\"id\":\"");
             if (i != -1) {
                 i += 6;
@@ -78,8 +88,10 @@ public class GraphHelper {
                 return response.substring(i, j);
             }
         } else {
-            String error = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A").next();
-            System.err.println("Error obteniendo siteId: " + error);
+            try (Scanner scanner = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A")) {
+                String error = scanner.next();
+                System.err.println("Error obteniendo siteId: " + error);
+            }
         }
         return null;
     }
@@ -89,13 +101,16 @@ public class GraphHelper {
      */
     public static String getDefaultDriveId(String siteId, String accessToken) throws IOException {
         String url = "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drives";
-        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Authorization", "Bearer " + accessToken);
         conn.setRequestProperty("Accept", "application/json");
         int responseCode = conn.getResponseCode();
         if (responseCode == 200) {
-            String response = new Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A").next();
+            String response;
+            try (Scanner scanner = new Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A")) {
+                response = scanner.next();
+            }
             int i = response.indexOf("\"id\":\"");
             if (i != -1) {
                 i += 6;
@@ -103,8 +118,10 @@ public class GraphHelper {
                 return response.substring(i, j);
             }
         } else {
-            String error = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A").next();
-            System.err.println("Error obteniendo driveId: " + error);
+            try (Scanner scanner = new Scanner(conn.getErrorStream(), "UTF-8").useDelimiter("\\A")) {
+                String error = scanner.next();
+                System.err.println("Error obteniendo driveId: " + error);
+            }
         }
         return null;
     }

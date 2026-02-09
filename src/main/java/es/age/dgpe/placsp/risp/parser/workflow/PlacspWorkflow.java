@@ -17,10 +17,10 @@ import java.util.List;
 
 /**
  * Orquestador principal del flujo de trabajo PLACSP.
- * Coordina las operaciones de descarga y conversión de datos de contratación pública.
+ * Coordina las operaciones de descarga y conversiÃ³n de datos de contrataciÃ³n pÃºblica.
  * 
  * Flujo:
- * 1. Extrae enlaces de archivos ZIP desde páginas web gubernamentales
+ * 1. Extrae enlaces de archivos ZIP desde pÃ¡ginas web gubernamentales
  * 2. Descarga los archivos ZIP
  * 3. Convierte los ZIP a formato Excel usando el CLI
  * 4. Muestra resumen de archivos generados
@@ -32,7 +32,7 @@ public class PlacspWorkflow {
     private final AtomToExcelConverter converter;
 
     static {
-        // Desactivar validación SSL si está configurado (solo para pruebas)
+        // Desactivar validaciÃ³n SSL si estÃ¡ configurado (solo para pruebas)
         if (EnvConfig.isSslDisableValidation()) {
             try {
                 javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
@@ -68,13 +68,13 @@ public class PlacspWorkflow {
     }
 
     /**
-     * Ejecuta el proceso completo: descarga y conversión.
+     * Ejecuta el proceso completo: descarga y conversiÃ³n.
      * 
-     * @param urls URLs de las páginas web donde buscar enlaces de descarga
+     * @param urls URLs de las pÃ¡ginas web donde buscar enlaces de descarga
      * @throws IOException si hay error en las operaciones de I/O
      */
     public void ejecutar(String[] urls) throws IOException {
-        // Obtener configuración de directorios desde .env
+        // Obtener configuraciÃ³n de directorios desde .env
         String downloadDir = EnvConfig.getDownloadDir();
         String atomDir = EnvConfig.getAtomDir();
         String excelDir = EnvConfig.getExcelDir();
@@ -82,7 +82,7 @@ public class PlacspWorkflow {
         
         long startTime = System.currentTimeMillis();
         
-        // Iniciar sesión de logging
+        // Iniciar sesiÃ³n de logging
         PlacspLogger.startSession();
         PlacspLogger.info("URLs a procesar: " + urls.length);
         
@@ -95,7 +95,7 @@ public class PlacspWorkflow {
         Files.createDirectories(Paths.get(atomDir));
         Files.createDirectories(Paths.get(excelDir));
         
-        // Verificar si la carpeta atom está vacía
+        // Verificar si la carpeta atom estÃ¡ vacÃ­a
         boolean atomVacio = esCarpetaVacia(atomDir);
         int numZipsDescargar = atomVacio ? mesesHistorico : 1;
         
@@ -105,11 +105,11 @@ public class PlacspWorkflow {
         System.out.println("\n[FASE 1] Descargando archivos ZIP...");
         descargarArchivos(urls, downloadDir, numZipsDescargar);
         
-        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresión automáticamente)
+        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresiÃ³n automÃ¡ticamente)
         System.out.println("\n[FASE 2] Convirtiendo archivos ZIP a Excel...");
         converter.convertirTodosZipAExcel(downloadDir, excelDir, atomDir, mesesHistorico);
         
-        // Limpiar archivos ZIP después de convertir
+        // Limpiar archivos ZIP despuÃ©s de convertir
         System.out.println("\n[LIMPIEZA] Eliminando archivos ZIP...");
         eliminarArchivosZip(downloadDir);
         
@@ -120,7 +120,7 @@ public class PlacspWorkflow {
         long endTime = System.currentTimeMillis();
         long duration = (endTime - startTime) / 1000;
         
-        // Finalizar sesión de logging
+        // Finalizar sesiÃ³n de logging
         PlacspLogger.endSession(duration);
         PlacspLogger.close();
         
@@ -133,10 +133,10 @@ public class PlacspWorkflow {
     }
     
     /**
-     * Verifica si una carpeta está vacía o no existe.
+     * Verifica si una carpeta estÃ¡ vacÃ­a o no existe.
      * 
      * @param dirPath Ruta de la carpeta
-     * @return true si está vacía o no existe
+     * @return true si estÃ¡ vacÃ­a o no existe
      */
     private boolean esCarpetaVacia(String dirPath) {
         java.io.File folder = new java.io.File(dirPath);
@@ -150,16 +150,16 @@ public class PlacspWorkflow {
     /**
      * Descarga archivos ZIP de las URLs especificadas.
      * 
-     * @param urls URLs de las páginas web donde buscar enlaces
+     * @param urls URLs de las pÃ¡ginas web donde buscar enlaces
      * @param downloadDir Directorio de descarga
-     * @param cantidad Número de archivos a descargar por cada URL
+     * @param cantidad NÃºmero de archivos a descargar por cada URL
      * @throws IOException si hay error en las operaciones
      */
     private void descargarArchivos(String[] urls, String downloadDir, int cantidad) throws IOException {
         for (String url : urls) {
             System.out.println("  Buscando en: " + url);
             
-            // Obtener los N enlaces más recientes (ordenados de más antiguo a más reciente)
+            // Obtener los N enlaces mÃ¡s recientes (ordenados de mÃ¡s antiguo a mÃ¡s reciente)
             List<String> enlaces = webScraper.extraerEnlacesAnyoMes(url, cantidad);
             
             if (!enlaces.isEmpty()) {
@@ -215,7 +215,7 @@ public class PlacspWorkflow {
                 System.err.println("  [ERROR] No se pudo obtener el siteId");
                 return;
             }
-            // Mostrar todos los drives para depuración
+            // Mostrar todos los drives para depuraciÃ³n
             GraphHelper.listDrives(siteId, token);
             
             // Buscar el driveId usando nombres configurados o estrategias de fallback
@@ -233,14 +233,14 @@ public class PlacspWorkflow {
                     }
                 }
             } else {
-                // Usar nombres por defecto si no hay configuración
-                // 1. Intentar 'Documentos compartidos' (español)
+                // Usar nombres por defecto si no hay configuraciÃ³n
+                // 1. Intentar 'Documentos compartidos' (espaÃ±ol)
                 driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Documentos compartidos");
                 if (driveId != null) {
                     driveDisplayName = "Documentos compartidos";
                 }
                 
-                // 2. Si no, intentar 'Documents' (inglés)
+                // 2. Si no, intentar 'Documents' (inglÃ©s)
                 if (driveId == null) {
                     driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Documents");
                     if (driveId != null) {
@@ -288,19 +288,19 @@ public class PlacspWorkflow {
             for (java.io.File file : excelFiles) {
                 try {
                     System.out.println("  Subiendo: " + file.getName());
-                    // El path destino: usar la carpeta de SHAREPOINT_LIBRARY si está definida
+                    // El path destino: usar la carpeta de SHAREPOINT_LIBRARY si estÃ¡ definida
                     String destino;
                     if (library != null && !library.isEmpty()) {
                         destino = library + "/" + file.getName();
                     } else {
                         destino = file.getName();
                     }
-                    // Imprimir la ruta destino en consola para depuración de codificación
+                    // Imprimir la ruta destino en consola para depuraciÃ³n de codificaciÃ³n
                     System.out.println("    [DEBUG] Ruta destino (UTF-8): " + destino);
                     if (uploader.uploadFile(file.getAbsolutePath(), destino)) {
                         System.out.println("    [OK] Subido: " + file.getName());
                         exitosos++;
-                        // Eliminar archivo local después de subir exitosamente
+                        // Eliminar archivo local despuÃ©s de subir exitosamente
                         if (file.delete()) {
                             System.out.println("    [OK] Eliminado localmente: " + file.getName());
                         }
@@ -341,11 +341,11 @@ public class PlacspWorkflow {
     /**
      * Punto de entrada principal del programa.
      * 
-     * @param args Argumentos de línea de comandos (no utilizados)
+     * @param args Argumentos de lÃ­nea de comandos (no utilizados)
      * @throws IOException si hay error en las operaciones
      */
     public static void main(String[] args) throws IOException {
-        // Obtener URLs desde configuración .env
+        // Obtener URLs desde configuraciÃ³n .env
         String[] urls = EnvConfig.getUrls();
 
         PlacspWorkflow workflow = new PlacspWorkflow();

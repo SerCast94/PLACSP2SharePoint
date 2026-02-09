@@ -1,14 +1,14 @@
 /*******************************************************************************
- * Copyright 2021 SubdirecciÛn General de CoordinaciÛn de la ContrataciÛn Electronica - DirecciÛn General Del Patrimonio Del Estado - SubsecretarÌa de Hacienda - Ministerio de Hacienda - AdministraciÛn General del Estado - Gobierno de EspaÒa
+ * Copyright 2021 Subdirecci√≥n General de Coordinaci√≥n de la Contrataci√≥n Electronica - Direcci√≥n General Del Patrimonio Del Estado - Subsecretar√≠a de Hacienda - Ministerio de Hacienda - Administraci√≥n General del Estado - Gobierno de Espa√±a
  * 
- * Licencia con arreglo a la EUPL, VersiÛn 1.2 o ñen cuanto sean aprobadas por la ComisiÛn Europeañ versiones posteriores de la EUPL (la ´Licenciaª);
- * Solo podr· usarse esta obra si se respeta la Licencia.
+ * Licencia con arreglo a la EUPL, Versi√≥n 1.2 o ‚Äìen cuanto sean aprobadas por la Comisi√≥n Europea‚Äì versiones posteriores de la EUPL (la ¬´Licencia¬ª);
+ * Solo podr√° usarse esta obra si se respeta la Licencia.
  * Puede obtenerse una copia de la Licencia en:
  * 
  * https://joinup.ec.europa.eu/software/page/eupl
  * 
- * Salvo cuando lo exija la legislaciÛn aplicable o se acuerde por escrito, el programa distribuido con arreglo a la Licencia se distribuye ´TAL CUALª, SIN GARANTÕAS NI CONDICIONES DE NING⁄N TIPO, ni expresas ni implÌcitas.
- * VÈase la Licencia en el idioma concreto que rige los permisos y limitaciones que establece la Licencia.
+ * Salvo cuando lo exija la legislaci√≥n aplicable o se acuerde por escrito, el programa distribuido con arreglo a la Licencia se distribuye ¬´TAL CUAL¬ª, SIN GARANT√çAS NI CONDICIONES DE NING√öN TIPO, ni expresas ni impl√≠citas.
+ * V√©ase la Licencia en el idioma concreto que rige los permisos y limitaciones que establece la Licencia.
  ******************************************************************************/
 package es.age.dgpe.placsp.risp.parser.model;
 
@@ -33,7 +33,7 @@ import ext.place.codice.common.caclib.ContractFolderStatusType;
 import ext.place.codice.common.caclib.NoticeInfoType;
  
 public enum DatosLicitacionGenerales{
-	PRIMERA_PUBLICACION("Primera publicaciÛn", EnumFormatos.FECHA_CORTA) {
+	PRIMERA_PUBLICACION("Primera publicaci√≥n", EnumFormatos.FECHA_CORTA) {
 	@Override
 		public GregorianCalendar valorCodice(ContractFolderStatusType contractFolder) {
 			GregorianCalendar primeraPublicacion = null;
@@ -47,7 +47,7 @@ public enum DatosLicitacionGenerales{
 							// Se recorren los medios de publicacion
 							for (AdditionalPublicationStatusType additionalPublicationStatus : noticeInfo
 									.getAdditionalPublicationStatus()) {
-								// Se obtiene la fecha m·s antigua
+								// Se obtiene la fecha m√°s antigua
 								for (AdditionalPublicationDocumentReferenceType additionalPublicationDocumentReference : additionalPublicationStatus
 										.getAdditionalPublicationDocumentReference()) {
 									GregorianCalendar fecha = additionalPublicationDocumentReference.getIssueDate().getValue().toGregorianCalendar();
@@ -79,7 +79,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	NUMERO_EXPEDIENTE ("N˙mero de expediente"){
+	NUMERO_EXPEDIENTE ("N√∫mero de expediente"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder){
 			try {
@@ -101,7 +101,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	ID_TED ("Identificador ˙nico TED"){
+	ID_TED ("Identificador √∫nico TED"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder){
 			try {
@@ -175,7 +175,7 @@ public enum DatosLicitacionGenerales{
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
 				if(contractFolder.getProcurementProject().getMixContractIndicator().isValue()) {
-					return "SÌ";
+					return "S√≠";
 				}else {
 					return "No";
 				}
@@ -184,7 +184,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	LUGAR_EJECUCION ("Lugar de ejecuciÛn"){
+	LUGAR_EJECUCION ("Lugar de ejecuci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			String codigo = "";
@@ -201,7 +201,7 @@ public enum DatosLicitacionGenerales{
 			}
 			
 			if (codigo == "" && descripcion == "") {
-				//Se intenta obtener el codigo del paÌs
+				//Se intenta obtener el codigo del pa√≠s
 				try {
 					codigo = contractFolder.getProcurementProject().getRealizedLocation().getAddress().getCountry().getIdentificationCode().getValue();
 				}catch(Exception e) {
@@ -218,7 +218,7 @@ public enum DatosLicitacionGenerales{
 			return codigo + " - " + descripcion;
 		}
 	},
-	ORGANO_CONTRATACION ("”rgano de ContrataciÛn"){
+	ORGANO_CONTRATACION ("√ìrgano de Contrataci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -291,7 +291,7 @@ public enum DatosLicitacionGenerales{
 			}			
 		}
 	},
-	TIPO_ADMINISTRACION ("Tipo de AdministraciÛn"){
+	TIPO_ADMINISTRACION ("Tipo de Administraci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {				
@@ -301,7 +301,7 @@ public enum DatosLicitacionGenerales{
 			}			
 		}
 	},
-	CODIGO_POSTAL ("CÛdigo Postal"){
+	CODIGO_POSTAL ("C√≥digo Postal"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {			
@@ -321,7 +321,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SISTEMA_CONTRATACION ("Sistema de contrataciÛn"){
+	SISTEMA_CONTRATACION ("Sistema de contrataci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -331,7 +331,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	TRAMITACION ("TramitaciÛn"){
+	TRAMITACION ("Tramitaci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -341,7 +341,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	PRESENTACION_OFERTA ("Forma de presentaciÛn de la oferta"){
+	PRESENTACION_OFERTA ("Forma de presentaci√≥n de la oferta"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -351,12 +351,12 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FECHA_PRESENTACION_OFERTAS ("Fecha de presentaciÛn de ofertas",  EnumFormatos.FECHA_LARGA){
+	FECHA_PRESENTACION_OFERTAS ("Fecha de presentaci√≥n de ofertas",  EnumFormatos.FECHA_LARGA){
 		@Override
 		public GregorianCalendar valorCodice(ContractFolderStatusType contractFolder) {
 			GregorianCalendar fechaFinal = new GregorianCalendar();
 			try {
-				//Se intenta recuper la fehca de fin de presentaciÛn de ofertas
+				//Se intenta recuper la fehca de fin de presentaci√≥n de ofertas
 				XMLGregorianCalendar finPresentacionDia = contractFolder.getTenderingProcess().getTenderSubmissionDeadlinePeriod().getEndDate().getValue();
 				XMLGregorianCalendar finPresentacionHora = contractFolder.getTenderingProcess().getTenderSubmissionDeadlinePeriod().getEndTime().getValue();
 	
@@ -372,12 +372,12 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FECHA_PRESENTACION_SOLICITUDES ("Fecha de presentaciÛn de solicitudes de participacion",  EnumFormatos.FECHA_LARGA){
+	FECHA_PRESENTACION_SOLICITUDES ("Fecha de presentaci√≥n de solicitudes de participacion",  EnumFormatos.FECHA_LARGA){
 		@Override
 		public GregorianCalendar valorCodice(ContractFolderStatusType contractFolder) {
 			GregorianCalendar fechaFinal = new GregorianCalendar();
 			try {
-				//Se intenta recuperar la fecha de fin de presentaciÛn de solicituddes
+				//Se intenta recuperar la fecha de fin de presentaci√≥n de solicituddes
 				XMLGregorianCalendar finPresentacionDia = contractFolder.getTenderingProcess().getParticipationRequestReceptionPeriod().getEndDate().getValue();
 				XMLGregorianCalendar finPresentacionHora = contractFolder.getTenderingProcess().getParticipationRequestReceptionPeriod().getEndTime().getValue();
 				
@@ -394,7 +394,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	ES_REG_SARA ("Directiva de aplicaciÛn"){
+	ES_REG_SARA ("Directiva de aplicaci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -409,7 +409,7 @@ public enum DatosLicitacionGenerales{
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
 				if(contractFolder.getTenderingProcess().getOverThresholdIndicator().isValue()) {
-					return "SÌ";
+					return "S√≠";
 				}
 					
 				else {
@@ -420,7 +420,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FINANCIACION_EUROPEA ("FinanciaciÛn Europea y fuente"){
+	FINANCIACION_EUROPEA ("Financiaci√≥n Europea y fuente"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -429,7 +429,7 @@ public enum DatosLicitacionGenerales{
 				
 				
 				for (FundingProgramCodeType fundingProgramCodeType : contractFolder.getTenderingTerms().getFundingProgramCode()) {
-					if (fundingProgramCodeType.getValue().compareTo("EU") == 0) financiacionEuropea = "SÌ";
+					if (fundingProgramCodeType.getValue().compareTo("EU") == 0) financiacionEuropea = "S√≠";
 					if (fundingProgramCodeType.getValue().compareTo("NO-EU") == 0) financiacionEuropea = "No";
 					if (fundingProgramCodeType.getValue().compareTo("REU") == 0 ||
 						fundingProgramCodeType.getValue().compareTo("FEDER") == 0 ||
@@ -438,7 +438,7 @@ public enum DatosLicitacionGenerales{
 						fundingProgramCodeType.getValue().compareTo("FEMP") == 0 ||
 						fundingProgramCodeType.getValue().compareTo("PRTR") == 0 ||
 						fundingProgramCodeType.getValue().compareTo("OFE") == 0){
-							//Hay fuente de financiaciÛn
+							//Hay fuente de financiaci√≥n
 						fuenteFinanciacion = GenericodeTypes.CODIGO_FINANCIACION.getValue(fundingProgramCodeType.getValue());
 					}
 						
@@ -451,7 +451,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FINANCIACION_EUROPEA_DESCRIPCION("DescripciÛn de la financiaciÛn europea"){
+	FINANCIACION_EUROPEA_DESCRIPCION("Descripci√≥n de la financiaci√≥n europea"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -461,12 +461,12 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SUBASTA_ELECTRONICA ("Subasta electrÛnica"){
+	SUBASTA_ELECTRONICA ("Subasta electr√≥nica"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
 				if(contractFolder.getTenderingProcess().getAuctionTerms().getAuctionConstraintIndicator().isValue()) {
-					return "SÌ";
+					return "S√≠";
 				}else {
 					return "No";
 				}
@@ -475,7 +475,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SUBCONTRACION_PERMITIDA_DESC ("SubcontrataciÛn permitida"){
+	SUBCONTRACION_PERMITIDA_DESC ("Subcontrataci√≥n permitida"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -485,7 +485,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SUBCONTRACION_PERMITIDA_RATE ("SubcontrataciÛn permitida porcentaje"){
+	SUBCONTRACION_PERMITIDA_RATE ("Subcontrataci√≥n permitida porcentaje"){
 		@Override
 		public BigDecimal valorCodice(ContractFolderStatusType contractFolder) {
 			try {

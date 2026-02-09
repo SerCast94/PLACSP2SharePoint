@@ -1,14 +1,14 @@
 /*******************************************************************************
- * Copyright 2021 Subdirección General de Coordinación de la Contratación Electronica - Dirección General Del Patrimonio Del Estado - Subsecretaría de Hacienda - Ministerio de Hacienda - Administración General del Estado - Gobierno de España
+ * Copyright 2021 SubdirecciÃ³n General de CoordinaciÃ³n de la ContrataciÃ³n Electronica - DirecciÃ³n General Del Patrimonio Del Estado - SubsecretarÃ­a de Hacienda - Ministerio de Hacienda - AdministraciÃ³n General del Estado - Gobierno de EspaÃ±a
  * 
- * Licencia con arreglo a la EUPL, Versión 1.2 o –en cuanto sean aprobadas por la Comisión Europea– versiones posteriores de la EUPL (la «Licencia»);
- * Solo podrá usarse esta obra si se respeta la Licencia.
+ * Licencia con arreglo a la EUPL, VersiÃ³n 1.2 o â€“en cuanto sean aprobadas por la ComisiÃ³n Europeaâ€“ versiones posteriores de la EUPL (la Â«LicenciaÂ»);
+ * Solo podrÃ¡ usarse esta obra si se respeta la Licencia.
  * Puede obtenerse una copia de la Licencia en:
  * 
  * https://joinup.ec.europa.eu/software/page/eupl
  * 
- * Salvo cuando lo exija la legislación aplicable o se acuerde por escrito, el programa distribuido con arreglo a la Licencia se distribuye «TAL CUAL», SIN GARANTÍAS NI CONDICIONES DE NINGÚN TIPO, ni expresas ni implícitas.
- * Véase la Licencia en el idioma concreto que rige los permisos y limitaciones que establece la Licencia.
+ * Salvo cuando lo exija la legislaciÃ³n aplicable o se acuerde por escrito, el programa distribuido con arreglo a la Licencia se distribuye Â«TAL CUALÂ», SIN GARANTÃAS NI CONDICIONES DE NINGÃšN TIPO, ni expresas ni implÃ­citas.
+ * VÃ©ase la Licencia en el idioma concreto que rige los permisos y limitaciones que establece la Licencia.
  ******************************************************************************/
 package es.age.dgpe.placsp.risp.parser.model;
 

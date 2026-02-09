@@ -4,7 +4,7 @@ import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -23,7 +23,7 @@ public class GraphSharePointUploader {
     /**
      * Sube un archivo a una carpeta de SharePoint usando Microsoft Graph
      * @param localFilePath Ruta local del archivo
-     * @param remotePath Ruta destino en la biblioteca (ej: "Colaboración/archivo.xlsx")
+     * @param remotePath Ruta destino en la biblioteca (ej: "ColaboraciÃ³n/archivo.xlsx")
      * @return true si fue exitoso
      */
     public boolean uploadFile(String localFilePath, String remotePath) {
@@ -42,7 +42,7 @@ public class GraphSharePointUploader {
                 encodedPath.append(URLEncoder.encode(pathParts[i], "UTF-8").replace("+", "%20"));
             }
             String url = "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drives/" + driveId + "/root:/" + encodedPath.toString() + ":/content";
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
             conn.setRequestMethod("PUT");
             conn.setDoOutput(true);
             conn.setRequestProperty("Authorization", "Bearer " + accessToken);
@@ -59,7 +59,10 @@ public class GraphSharePointUploader {
                 PlacspLogger.upload(file.getName(), remotePath, sizeMB, true);
                 return true;
             } else {
-                String error = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8)).lines().reduce("", (a, b) -> a + b);
+                String error;
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                    error = reader.lines().reduce("", (a, b) -> a + b);
+                }
                 System.err.println("    [ERROR] Error al subir por Graph (codigo " + responseCode + "): " + error);
                 // Registrar error en log
                 PlacspLogger.upload(file.getName(), remotePath, false);
@@ -68,9 +71,9 @@ public class GraphSharePointUploader {
             }
         } catch (Exception e) {
             System.err.println("  [ERROR] Error al subir archivo por Graph: " + e.getMessage());
-            // Registrar excepción en log
+            // Registrar excepciÃ³n en log
             PlacspLogger.upload(localFilePath, remotePath, false);
-            PlacspLogger.error("Excepción subiendo archivo", e);
+            PlacspLogger.error("ExcepciÃ³n subiendo archivo", e);
             return false;
         }
     }

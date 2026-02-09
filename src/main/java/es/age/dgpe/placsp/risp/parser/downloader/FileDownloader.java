@@ -7,7 +7,7 @@ import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URL;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -15,10 +15,10 @@ import java.nio.file.Paths;
  * Clase responsable de descargar archivos desde URLs HTTP/HTTPS.
  * Maneja la descarga con indicador de progreso en consola.
  * 
- * Parámetros configurables desde .env:
- * - DOWNLOAD_BUFFER_SIZE: Tamaño del buffer de descarga
+ * ParÃ¡metros configurables desde .env:
+ * - DOWNLOAD_BUFFER_SIZE: TamaÃ±o del buffer de descarga
  * - DOWNLOAD_PROGRESS_INTERVAL_MB: Intervalo para mostrar progreso
- * - HTTP_CONNECT_TIMEOUT: Timeout de conexión
+ * - HTTP_CONNECT_TIMEOUT: Timeout de conexiÃ³n
  * - HTTP_READ_TIMEOUT: Timeout de lectura
  */
 public class FileDownloader {
@@ -30,29 +30,21 @@ public class FileDownloader {
      * @param nombreArchivo Ruta local donde guardar el archivo
      */
     public void descargarArchivo(String urlStr, String nombreArchivo) {
-        // Cargar configuración desde .env
+        // Cargar configuraciÃ³n desde .env
         int bufferSize = EnvConfig.getDownloadBufferSize();
         int progressIntervalMb = EnvConfig.getDownloadProgressIntervalMb();
         int connectTimeout = EnvConfig.getHttpConnectTimeout();
         int readTimeout = EnvConfig.getHttpReadTimeout();
         
         try {
-            URL url = new URL(urlStr);
-            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            HttpsURLConnection conn = (HttpsURLConnection) URI.create(urlStr).toURL().openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(connectTimeout);
             conn.setReadTimeout(readTimeout);
             
-            // Obtener tamaño del archivo (puede ser -1 si el servidor no lo envía)
+            // Obtener tamaÃ±o del archivo (puede ser -1 si el servidor no lo envÃ­a)
             long fileSize = conn.getContentLengthLong();
             boolean conoceTamano = fileSize > 0;
-            
-            if (conoceTamano) {
-                double fileSizeMB = fileSize / (1024.0 * 1024.0);
-                System.out.printf("    Tamaño: %.2f MB%n", fileSizeMB);
-            } else {
-                System.out.println("    Tamaño: desconocido");
-            }
             
             try (InputStream in = conn.getInputStream();
                  OutputStream out = Files.newOutputStream(Paths.get(nombreArchivo))) {
@@ -65,7 +57,7 @@ public class FileDownloader {
                     out.write(buffer, 0, bytesRead);
                     totalBytesRead += bytesRead;
                     
-                    // Mostrar progreso según intervalo configurado
+                    // Mostrar progreso segÃºn intervalo configurado
                     long currentMB = totalBytesRead / (1024 * 1024);
                     if (currentMB >= lastPrintedMB + progressIntervalMb) {
                         if (conoceTamano) {
@@ -80,7 +72,7 @@ public class FileDownloader {
                     }
                 }
                 
-                // Mostrar tamaño final
+                // Mostrar resultado final
                 double finalSizeMB = totalBytesRead / (1024.0 * 1024.0);
                 System.out.printf("    [OK] Descarga completada: %s (%.2f MB)%n", nombreArchivo, finalSizeMB);
                 
@@ -96,10 +88,10 @@ public class FileDownloader {
     }
 
     /**
-     * Calcula el tamaño de un archivo en MB.
+     * Calcula el tamaÃ±o de un archivo en MB.
      * 
      * @param filePath Ruta del archivo
-     * @return Tamaño en MB
+     * @return TamaÃ±o en MB
      * @throws IOException si hay error al leer el archivo
      */
     public double obtenerTamanoMB(String filePath) throws IOException {

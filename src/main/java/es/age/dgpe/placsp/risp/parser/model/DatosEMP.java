@@ -1,14 +1,14 @@
 /*******************************************************************************
- * Copyright 2021 SubdirecciÛn General de CoordinaciÛn de la ContrataciÛn Electronica - DirecciÛn General Del Patrimonio Del Estado - SubsecretarÌa de Hacienda - Ministerio de Hacienda - AdministraciÛn General del Estado - Gobierno de EspaÒa
+ * Copyright 2021 Subdirecci√≥n General de Coordinaci√≥n de la Contrataci√≥n Electronica - Direcci√≥n General Del Patrimonio Del Estado - Subsecretar√≠a de Hacienda - Ministerio de Hacienda - Administraci√≥n General del Estado - Gobierno de Espa√±a
  * 
- * Licencia con arreglo a la EUPL, VersiÛn 1.2 o ñen cuanto sean aprobadas por la ComisiÛn Europeañ versiones posteriores de la EUPL (la ´Licenciaª);
- * Solo podr· usarse esta obra si se respeta la Licencia.
+ * Licencia con arreglo a la EUPL, Versi√≥n 1.2 o ‚Äìen cuanto sean aprobadas por la Comisi√≥n Europea‚Äì versiones posteriores de la EUPL (la ¬´Licencia¬ª);
+ * Solo podr√° usarse esta obra si se respeta la Licencia.
  * Puede obtenerse una copia de la Licencia en:
  * 
  * https://joinup.ec.europa.eu/software/page/eupl
  * 
- * Salvo cuando lo exija la legislaciÛn aplicable o se acuerde por escrito, el programa distribuido con arreglo a la Licencia se distribuye ´TAL CUALª, SIN GARANTÕAS NI CONDICIONES DE NING⁄N TIPO, ni expresas ni implÌcitas.
- * VÈase la Licencia en el idioma concreto que rige los permisos y limitaciones que establece la Licencia.
+ * Salvo cuando lo exija la legislaci√≥n aplicable o se acuerde por escrito, el programa distribuido con arreglo a la Licencia se distribuye ¬´TAL CUAL¬ª, SIN GARANT√çAS NI CONDICIONES DE NING√öN TIPO, ni expresas ni impl√≠citas.
+ * V√©ase la Licencia en el idioma concreto que rige los permisos y limitaciones que establece la Licencia.
  ******************************************************************************/
 package es.age.dgpe.placsp.risp.parser.model;
 
@@ -27,7 +27,7 @@ import ext.place.codice.common.caclib.ContractFolderStatusType;
 import ext.place.codice.common.caclib.NoticeInfoType;
  
 public enum DatosEMP{
-	PRIMERA_PUBLICACION("Primera publicaciÛn", EnumFormatos.FECHA_CORTA) {
+	PRIMERA_PUBLICACION("Primera publicaci√≥n", EnumFormatos.FECHA_CORTA) {
 	@Override
 		public GregorianCalendar valorCodice(ContractFolderStatusType contractFolder) {
 			GregorianCalendar primeraPublicacion = null;
@@ -43,7 +43,7 @@ public enum DatosEMP{
 									.getAdditionalPublicationStatus()) {
 								// Se comprueba si el medio es el perfil de contratante
 								if (additionalPublicationStatus.getPublicationMediaName().getValue().equalsIgnoreCase("Perfil del Contratante")) {
-									// Se obtiene la fecha m·s antigua
+									// Se obtiene la fecha m√°s antigua
 									for (AdditionalPublicationDocumentReferenceType additionalPublicationDocumentReference : additionalPublicationStatus
 											.getAdditionalPublicationDocumentReference()) {
 										GregorianCalendar fecha = additionalPublicationDocumentReference.getIssueDate().getValue().toGregorianCalendar();
@@ -76,7 +76,7 @@ public enum DatosEMP{
 			}
 		}
 	},
-	NUMERO_EXPEDIENTE ("N˙mero de expediente"){
+	NUMERO_EXPEDIENTE ("N√∫mero de expediente"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder){
 			try {
@@ -156,7 +156,7 @@ public enum DatosEMP{
 			}			
 		}
 	},
-	LUGAR_EJECUCION ("Lugar de ejecuciÛn"){
+	LUGAR_EJECUCION ("Lugar de ejecuci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			String codigo = "";
@@ -173,7 +173,7 @@ public enum DatosEMP{
 			}
 			
 			if (codigo == "" && descripcion == "") {
-				//Se intenta obtener el codigo del paÌs
+				//Se intenta obtener el codigo del pa√≠s
 				try {
 					codigo = contractFolder.getProcurementProject().getRealizedLocation().getAddress().getCountry().getIdentificationCode().getValue();
 				}catch(Exception e) {
@@ -190,7 +190,7 @@ public enum DatosEMP{
 			return codigo + " - " + descripcion;
 		}
 	},
-	ORGANO_CONTRATACION ("”rgano de ContrataciÛn"){
+	ORGANO_CONTRATACION ("√ìrgano de Contrataci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -258,7 +258,7 @@ public enum DatosEMP{
 			}			
 		}
 	},
-	TIPO_ADMINISTRACION ("Tipo de AdministraciÛn"){
+	TIPO_ADMINISTRACION ("Tipo de Administraci√≥n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {				
@@ -268,7 +268,7 @@ public enum DatosEMP{
 			}			
 		}
 	},
-	CODIGO_POSTAL ("CÛdigo Postal"){
+	CODIGO_POSTAL ("C√≥digo Postal"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {			

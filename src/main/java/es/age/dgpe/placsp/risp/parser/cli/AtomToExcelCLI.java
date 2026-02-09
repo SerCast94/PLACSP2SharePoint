@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,10 +29,14 @@ import javax.xml.bind.Unmarshaller;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.purl.atompub.tombstones._1.DeletedEntryType;
 import org.w3._2005.atom.EntryType;
 import org.w3._2005.atom.FeedType;
 import org.w3._2005.atom.LinkType;
+
+import com.ibm.icu.text.Normalizer2;
+import com.ibm.icu.text.Transliterator;
 
 import es.age.dgpe.placsp.risp.parser.model.DatosCPM;
 import es.age.dgpe.placsp.risp.parser.model.DatosEMP;
@@ -45,10 +48,10 @@ import ext.place.codice.common.caclib.PreliminaryMarketConsultationStatusType;
 
 /**
  * CLI tool to convert PLACSP RISP ATOM files to Excel using existing logic.
- * Soporta múltiples archivos ATOM de entrada que se combinan en un único Excel.
+ * Soporta multiples archivos ATOM de entrada que se combinan en un unico Excel.
  *
  * Usage:
- *   --in <path.atom>       Path to an ATOM file (puede repetirse para múltiples archivos)
+ *   --in <path.atom>       Path to an ATOM file (puede repetirse para multiples archivos)
  *   --out <path.xlsx>      Output Excel path
  *   --dos-tablas           Output licitaciones + resultados in two sheets
  *   --sin-emp              Do not include EMP sheet
@@ -57,6 +60,181 @@ import ext.place.codice.common.caclib.PreliminaryMarketConsultationStatusType;
 public class AtomToExcelCLI {
 
     private static Unmarshaller atomUnMarshaller;
+
+    // Transliterator de ICU4J para limpieza exhaustiva de texto (thread-safe, reutilizable)
+    private static final Transliterator LATIN_ASCII = Transliterator.getInstance(
+            "Any-Latin; Latin-ASCII; [\u0080-\uFFFF] Remove");
+    private static final Normalizer2 NFC_NORMALIZER = Normalizer2.getNFCInstance();
+    
+    // Patron precompilado para caracteres problematicos en Power BI M
+    // Incluye: controles, formato Unicode, surrogates, private use, etc.
+    private static final java.util.regex.Pattern POWERBI_PROBLEMATIC = java.util.regex.Pattern.compile(
+            "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F-\\x9F]" +  // Caracteres de control (excepto tab, LF, CR)
+            "|[\\u00AD]" +                                      // Soft hyphen
+            "|[\\u200B-\\u200F]" +                              // Zero-width y marcadores direccionales
+            "|[\u2028-\u202F]" +                              // Separadores de linea/parrafo y espacios especiales
+            "|[\\u2060-\\u206F]" +                              // Word joiner y caracteres de formato
+            "|[\\uFEFF]" +                                       // BOM / Zero-width no-break space
+            "|[\\uFFF0-\\uFFFF]" +                              // Specials (incluyendo replacement char)
+            "|[\uD800-\uDFFF]" +                              // Surrogates (huerfanos causan errores)
+            "|[\\uE000-\\uF8FF]" +                              // Private Use Area
+            "|[\u0300-\u036F]+(?![\\p{L}])"                   // Diacriticos sueltos sin letra base
+    );
+
+    /**
+     * Limpia y normaliza texto de forma exhaustiva para compatibilidad con Power BI.
+     * Usa ICU4J para normalizacion Unicode y transliteracion a ASCII puro.
+     * Elimina todos los caracteres problematicos conocidos para el lenguaje M de Power BI.
+     * 
+     * @param texto El texto a limpiar
+     * @return El texto limpio y normalizado (solo ASCII imprimible), o null si el texto era null
+     */
+private static String limpiarSaltosDeLinea(String texto) {
+
+    if (texto == null) return null;
+
+    // 1. Desescapar entidades HTML comunes (ambas formas: &entity; y &amp;entity;)
+    String limpio = texto
+        // Forma doblemente escapada (&amp;entity;)
+        .replace("&amp;#xD;", " ")
+        .replace("&amp;#xA;", " ")
+        .replace("&amp;#x9;", " ")
+        .replace("&amp;#13;", " ")
+        .replace("&amp;#10;", " ")
+        .replace("&amp;#0;", "")
+        .replace("&amp;quot;", "'")
+        .replace("&amp;amp;", "&")
+        .replace("&amp;lt;", "<")
+        .replace("&amp;gt;", ">")
+        .replace("&amp;apos;", "'")
+        .replace("&amp;nbsp;", " ")
+        // Forma simple (&entity;)
+        .replace("&#xD;", " ")
+        .replace("&#xA;", " ")
+        .replace("&#x9;", " ")
+        .replace("&#13;", " ")
+        .replace("&#10;", " ")
+        .replace("&#0;", "")
+        .replace("&quot;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&apos;", "'")
+        .replace("&nbsp;", " ");
+
+    // 2. Normalización Unicode NFC
+    limpio = NFC_NORMALIZER.normalize(limpio);
+
+    // ----------------------------------------------------------------------
+    // 🔥 2-B. LIMPIEZA DE ESCAPES TÍPICOS DEL PLACSP / JSON
+    // ----------------------------------------------------------------------
+    limpio = limpio
+        .replace("\\\\", " ")  // elimina doble backslash
+        .replace("\\(", "(")   // paréntesis escapados
+        .replace("\\)", ")")
+        .replace("\\-", "-")   // guiones escapados
+        .replace("\\_", "_")   // subrayado escapado
+        .replace("\\/", "/")   // barras escapadas
+        .replace("\\n", " ")   // saltos escapados
+        .replace("\\r", " ")
+        .replace("\\t", " ")
+        .replace("\\\"", "\"") // comillas escapadas
+        .replace("\\'", "'");  // apostrofes escapados
+
+    // ----------------------------------------------------------------------
+    // 🔥 2-C. DECODIFICAR URLS (%2F, %3A, %26…)
+    // ----------------------------------------------------------------------
+    try {
+        limpio = java.net.URLDecoder.decode(limpio, java.nio.charset.StandardCharsets.UTF_8);
+    } catch (Exception ignored) {}
+
+    // ----------------------------------------------------------------------
+    // 🔥 2-D. ELIMINAR ASCII CONTROL (0x00–0x1F) invisibles
+    // ----------------------------------------------------------------------
+    limpio = limpio.replaceAll("[\\x00-\\x1F]", " ");
+
+    // 3. Sustituir saltos de línea reales por espacios
+    limpio = limpio.replaceAll("\r\n|\r|\n", " ");
+
+    // 4. Eliminar tabulaciones
+    limpio = limpio.replace('\t', ' ');
+
+    // 5. Eliminar diacríticos (acentos) si quieres texto plano
+    limpio = java.text.Normalizer.normalize(limpio, java.text.Normalizer.Form.NFD);
+    limpio = limpio.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+
+    // 6. Filtrar caracteres problemáticos según tu patrón
+    limpio = POWERBI_PROBLEMATIC.matcher(limpio).replaceAll("");
+
+    // 7. Convertir guiones “bonitos” a ASCII
+    limpio = limpio
+        .replace('\u2010', '-')  // hyphen
+        .replace('\u2011', '-')  // non-breaking hyphen
+        .replace('\u2012', '-')  // figure dash
+        .replace('\u2013', '-')  // en dash
+        .replace('\u2014', '-')  // em dash
+        .replace('\u2015', '-')  // horizontal bar
+        .replace('\u2212', '-')  // minus sign
+        .replace('\u2043', '-'); // hyphen bullet
+
+    // 8. Normalizar espacios Unicode a espacio ASCII
+    limpio = limpio
+        .replace('\u00A0', ' ')
+        .replace('\u2002', ' ')
+        .replace('\u2003', ' ')
+        .replace('\u2004', ' ')
+        .replace('\u2005', ' ')
+        .replace('\u2006', ' ')
+        .replace('\u2007', ' ')
+        .replace('\u2008', ' ')
+        .replace('\u2009', ' ')
+        .replace('\u200A', ' ')
+        .replace('\u202F', ' ')
+        .replace('\u205F', ' ');
+
+    // 9. Comillas tipográficas → ASCII
+    limpio = limpio
+        .replace('\u2018', '\'')
+        .replace('\u2019', '\'')
+        .replace('\u201A', '\'')
+        .replace('\u201B', '\'')
+        .replace('\u201C', '"')
+        .replace('\u201D', '"')
+        .replace('\u201E', '"')
+        .replace('\u201F', '"')
+        .replace('\u00AB', '"')
+        .replace('\u00BB', '"')
+        .replace('\u2039', '\'')
+        .replace('\u203A', '\'');
+
+    // 10. Puntos suspensivos y símbolos varios
+    limpio = limpio
+        .replace("\u2026", "...") 
+        .replace('\u2022', '*')
+        .replace('\u2023', '>')
+        .replace('\u2219', '*')
+        .replace('\u25AA', '*')
+        .replace('\u25CF', '*')
+        .replace('\u00B7', '*');
+
+    // 11. Permitir solo ASCII imprimible + ñÑüÜ
+    String permitidos = "ñÑüÜ";
+    StringBuilder sb = new StringBuilder(limpio.length());
+    for (char c : limpio.toCharArray()) {
+        if ((c >= 32 && c <= 126) || permitidos.indexOf(c) >= 0)
+            sb.append(c);
+    }
+    limpio = sb.toString();
+
+    // 12. Normalizar espacios
+    limpio = limpio.replaceAll("\\s+", " ").trim();
+
+    // 13. Limitar longitud a 4000 (Power BI Service)
+    if (limpio.length() > 4000)
+        limpio = limpio.substring(0, 3997) + "...";
+
+    return limpio;
+}
 
     // EDITA ESTAS RUTAS PARA EJECUCIONES RAPIDAS SIN ARGUMENTOS
     // Ejemplos:
@@ -93,7 +271,7 @@ public class AtomToExcelCLI {
                 if (inPath.toLowerCase().endsWith(".zip")) {
                     System.out.println("Detectado archivo ZIP, extrayendo: " + inPath);
                     String extractedAtom = extractAndFindAtom(inPath, tempDir);
-                    System.out.println("Usando archivo extraído: " + extractedAtom);
+                    System.out.println("Usando archivo extraÃ­do: " + extractedAtom);
                     actualInPaths.add(extractedAtom);
                 } else {
                     actualInPaths.add(inPath);
@@ -102,13 +280,13 @@ public class AtomToExcelCLI {
 
             Args actualArgs = new Args(actualInPaths, parsed.outPath, parsed.dosTablas, parsed.sinEMP, parsed.sinCPM, true, 0);
             new AtomToExcelCLI().convert(actualArgs);
-            System.out.println("Conversión completada: " + parsed.outPath);
+            System.out.println("ConversiÃ³n completada: " + parsed.outPath);
         } catch (Exception e) {
-            System.err.println("Error en la conversión: " + e.getMessage());
+            System.err.println("Error en la conversiÃ³n: " + e.getMessage());
             e.printStackTrace();
             System.exit(2);
         } finally {
-            // Limpiar directorio temporal si se creó
+            // Limpiar directorio temporal si se creÃ³
             if (tempDir != null) {
                 try {
                     deleteRecursively(tempDir);
@@ -154,7 +332,7 @@ public class AtomToExcelCLI {
             return files[0].getAbsolutePath();
         }
 
-        throw new FileNotFoundException("No se encontró archivo .atom en el ZIP");
+        throw new FileNotFoundException("No se encontrÃ³ archivo .atom en el ZIP");
     }
 
     private static void deleteRecursively(Path path) throws IOException {
@@ -171,6 +349,7 @@ public class AtomToExcelCLI {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void convert(Args args) throws Exception {
         HashSet<String> entriesProcesadas = new HashSet<>();
         HashMap<String, GregorianCalendar> entriesDeleted = new HashMap<>();
@@ -302,26 +481,40 @@ public class AtomToExcelCLI {
                 System.out.println("  Procesados " + numeroFicherosProcesados + " ficheros ATOM de esta fuente");
             }
 
-            spreeadSheetManager.insertarFiltro(seleccionLicitacionGenerales.size(), seleccionLicitacionResultados.size(), seleccionEncargosMediosPropios.size(), seleccionConsultasPreliminares.size());
+            // spreeadSheetManager.insertarFiltro(seleccionLicitacionGenerales.size(), seleccionLicitacionResultados.size(), seleccionEncargosMediosPropios.size(), seleccionConsultasPreliminares.size());
+
+            // Eliminar hojas no deseadas antes de guardar (Presentacion y Resultados)
+            SXSSFWorkbook wb = spreeadSheetManager.getWorkbook();
+            // Eliminar hoja "Presentacion" si existe
+            int idxPresentacion = wb.getSheetIndex("Presentación");
+            if (idxPresentacion >= 0) {
+                wb.removeSheetAt(idxPresentacion);
+            }
+            // Eliminar hoja "Resultados" si existe
+            int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
+            if (idxResultados >= 0) {
+                wb.removeSheetAt(idxResultados);
+            }
 
             spreeadSheetManager.getWorkbook().write(output_file);
             output_file.close();
             spreeadSheetManager.getWorkbook().close();
             
-            System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " únicas");
+            System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " Ãºnicas");
 
         } catch (JAXBException e) {
-            String auxError = "Error al procesar el fichero ATOM. No se puede continuar con el proceso.";
+            // Error al procesar el fichero ATOM
             throw e;
         } catch (FileNotFoundException e) {
-            String auxError = "Error al generar el fichero de salida. No se pudo crear o abrir el fichero indicado.";
+            // Error al generar el fichero de salida
             throw e;
         } catch (Exception e) {
-            String auxError = "Error inesperado, revise la configuración y el log...";
+            // Error inesperado
             throw e;
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void procesarEntry(EntryType entry, SXSSFSheet sheet, GregorianCalendar fechaDeleted, ArrayList<DatosLicitacionGenerales> buscadorDatosSeleecionables) {
         Cell cell;
         ContractFolderStatusType contractFolder = ((JAXBElement<ContractFolderStatusType>) entry.getAny().get(0)).getValue();
@@ -355,12 +548,20 @@ public class AtomToExcelCLI {
         }
 
         for (DatosLicitacionGenerales dato: buscadorDatosSeleecionables) {
+
             Object datoCodice = dato.valorCodice(contractFolder);
             cell = row.createCell(cellnum++);
             if (datoCodice instanceof BigDecimal) {
                 cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
             } else if (datoCodice instanceof String) {
-                cell.setCellValue((String) datoCodice);
+                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripciÃ³n)
+                if (dato == DatosLicitacionGenerales.OBJETO_CONTRATO
+                ) {
+                    cell.setCellValue((String) datoCodice);
+                    //cell.setCellValue(limpiarSaltosDeLinea((String) datoCodice));
+                } else {
+                    cell.setCellValue((String) datoCodice);
+                }
             } else if (datoCodice instanceof GregorianCalendar) {
                 cell.setCellValue((LocalDateTime) ((GregorianCalendar)datoCodice).toZonedDateTime().toLocalDateTime());
             } else if (datoCodice instanceof Boolean) {
@@ -370,6 +571,7 @@ public class AtomToExcelCLI {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void procesarEntryResultados(EntryType entry, SXSSFSheet sheet, GregorianCalendar fechaDeleted, ArrayList<DatosResultados> buscadorDatosResultados) {
         Cell cell;
         ContractFolderStatusType contractFolder = ((JAXBElement<ContractFolderStatusType>) entry.getAny().get(0)).getValue();
@@ -401,6 +603,7 @@ public class AtomToExcelCLI {
                     if (datoCodice instanceof BigDecimal) {
                         cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
                     } else if (datoCodice instanceof String) {
+                        // DatosResultados no tiene OBJETO_CONTRATO, no aplicar limpieza
                         cell.setCellValue((String) datoCodice);
                     } else if (datoCodice instanceof GregorianCalendar) {
                         cell.setCellValue((LocalDateTime) ((GregorianCalendar)datoCodice).toZonedDateTime().toLocalDateTime());
@@ -413,6 +616,7 @@ public class AtomToExcelCLI {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void procesarEntryCompleta(EntryType entry, SXSSFSheet sheet, GregorianCalendar fechaDeleted,
                                        ArrayList<DatosLicitacionGenerales> buscadorDatosSeleccionables,
                                        ArrayList<DatosResultados> buscadorDatosResultados) {
@@ -430,6 +634,7 @@ public class AtomToExcelCLI {
                     if (datoCodice instanceof BigDecimal) {
                         cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
                     } else if (datoCodice instanceof String) {
+                        // DatosResultados no tiene OBJETO_CONTRATO, no aplicar limpieza
                         cell.setCellValue((String) datoCodice);
                     } else if (datoCodice instanceof GregorianCalendar) {
                         cell.setCellValue((LocalDateTime) ((GregorianCalendar)datoCodice).toZonedDateTime().toLocalDateTime());
@@ -444,6 +649,7 @@ public class AtomToExcelCLI {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void procesarEncargo(EntryType entry, SXSSFSheet sheet, GregorianCalendar fechaDeleted, ArrayList<DatosEMP> buscadorDatosSelecionables) {
         Cell cell;
         ContractFolderStatusType contractFolder = ((JAXBElement<ContractFolderStatusType>) entry.getAny().get(0)).getValue();
@@ -482,7 +688,12 @@ public class AtomToExcelCLI {
             if (datoCodice instanceof BigDecimal) {
                 cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
             } else if (datoCodice instanceof String) {
-                cell.setCellValue((String) datoCodice);
+                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripciÃ³n)
+                if (dato == DatosEMP.OBJETO_CONTRATO) {
+                    cell.setCellValue(limpiarSaltosDeLinea((String) datoCodice));
+                } else {
+                    cell.setCellValue((String) datoCodice);
+                }
             } else if (datoCodice instanceof GregorianCalendar) {
                 cell.setCellValue((LocalDateTime) ((GregorianCalendar)datoCodice).toZonedDateTime().toLocalDateTime());
             } else if (datoCodice instanceof Boolean) {
@@ -492,6 +703,7 @@ public class AtomToExcelCLI {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void procesarCPM(EntryType entry, SXSSFSheet sheet, GregorianCalendar fechaDeleted, ArrayList<DatosCPM> buscadorDatosSelecionables) {
         Cell cell;
         PreliminaryMarketConsultationStatusType preliminaryMarketConsultationStatusType = ((JAXBElement<PreliminaryMarketConsultationStatusType>) entry.getAny().get(0)).getValue();
@@ -530,7 +742,12 @@ public class AtomToExcelCLI {
             if (datoCodice instanceof BigDecimal) {
                 cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
             } else if (datoCodice instanceof String) {
-                cell.setCellValue((String) datoCodice);
+                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripciÃ³n)
+                if (dato == DatosCPM.OBJETO_CONTRATO) {
+                    cell.setCellValue(limpiarSaltosDeLinea((String) datoCodice));
+                } else {
+                    cell.setCellValue((String) datoCodice);
+                }
             } else if (datoCodice instanceof GregorianCalendar) {
                 cell.setCellValue((LocalDateTime) ((GregorianCalendar)datoCodice).toZonedDateTime().toLocalDateTime());
             } else if (datoCodice instanceof Boolean) {
@@ -656,7 +873,7 @@ public class AtomToExcelCLI {
                 }
             }
             boolean ok = !inPaths.isEmpty() && out != null;
-            // Si faltan argumentos, usamos defaults si están configurados
+            // Si faltan argumentos, usamos defaults si estÃ¡n configurados
             if (!ok && AtomToExcelCLI.DEFAULT_IN_PATH != null && !AtomToExcelCLI.DEFAULT_IN_PATH.isEmpty()
                     && AtomToExcelCLI.DEFAULT_OUT_PATH != null && !AtomToExcelCLI.DEFAULT_OUT_PATH.isEmpty()) {
                 if (inPaths.isEmpty()) {
@@ -672,17 +889,17 @@ public class AtomToExcelCLI {
 
         String usage() {
             return "Uso:\n" +
-                   "  --in <path>        Fichero ATOM o ZIP (puede repetirse para múltiples archivos)\n" +
+                   "  --in <path>        Fichero ATOM o ZIP (puede repetirse para mÃºltiples archivos)\n" +
                    "  --out <path.xlsx>  Fichero Excel de salida\n" +
                    "  [--dos-tablas]     Separar licitaciones y resultados\n" +
                    "  [--sin-emp]        No incluir hoja EMP\n" +
                    "  [--sin-cpm]        No incluir hoja CPM\n" +
                    "  [--help]           Mostrar esta ayuda\n" +
-                   "\nSi --in es un .zip, se descomprimirá automáticamente\n" +
-                   "y se buscará el .atom con el mismo nombre.\n" +
-                   "\nPuedes especificar múltiples --in para combinar varias fuentes ATOM\n" +
-                   "en un único archivo Excel.\n" +
-                   "\nTambién puedes editar en la clase:\n" +
+                   "\nSi --in es un .zip, se descomprimirÃ¡ automÃ¡ticamente\n" +
+                   "y se buscarÃ¡ el .atom con el mismo nombre.\n" +
+                   "\nPuedes especificar mÃºltiples --in para combinar varias fuentes ATOM\n" +
+                   "en un Ãºnico archivo Excel.\n" +
+                   "\nTambiÃ©n puedes editar en la clase:\n" +
                    "  DEFAULT_IN_PATH  y DEFAULT_OUT_PATH para ejecutar sin argumentos";
         }
     }

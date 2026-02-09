@@ -6,15 +6,13 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URL;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.KeyStore;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,11 +85,11 @@ public class EnlaceAnyoMesExtractor {
                 System.out.println("  Descargando: " + nombreOriginal);
                 descargarArchivo(enlace, nombreArchivo);
             } else {
-                System.out.println("  No se encontro enlace AÑOMES.");
+                System.out.println("  No se encontro enlace AÃ‘OMES.");
             }
         }
         
-        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresión automáticamente)
+        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresiÃ³n automÃ¡ticamente)
         System.out.println("\n[FASE 2] Convirtiendo archivos ZIP a Excel...");
         convertirTodosZipAExcel(downloadDir, excelDir);
         
@@ -110,8 +108,7 @@ public class EnlaceAnyoMesExtractor {
         try {
             // Usar Client Credentials Flow - funciona sin consentimiento del administrador
             String tokenUrl = "https://login.microsoftonline.com/" + tenantId + "/oauth2/v2.0/token";
-            URL url = new URL(tokenUrl);
-            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            HttpsURLConnection conn = (HttpsURLConnection) URI.create(tokenUrl).toURL().openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
@@ -126,7 +123,7 @@ public class EnlaceAnyoMesExtractor {
             }
             
             int responseCode = conn.getResponseCode();
-            System.out.println("Código de respuesta del token: " + responseCode);
+            System.out.println("CÃ³digo de respuesta del token: " + responseCode);
             
             if (responseCode == 200) {
                 try (Scanner scanner = new Scanner(conn.getInputStream()).useDelimiter("\\A")) {
@@ -148,7 +145,7 @@ public class EnlaceAnyoMesExtractor {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Excepción al obtener token: " + e.getMessage());
+            System.err.println("ExcepciÃ³n al obtener token: " + e.getMessage());
             e.printStackTrace();
         }
         return null;
@@ -170,22 +167,14 @@ public class EnlaceAnyoMesExtractor {
 
     public static void descargarArchivo(String urlStr, String nombreArchivo) {
         try {
-            URL url = new URL(urlStr);
-            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            HttpsURLConnection conn = (HttpsURLConnection) URI.create(urlStr).toURL().openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(30000);
             conn.setReadTimeout(60000);
             
-            // Obtener tamaño del archivo (puede ser -1 si el servidor no lo envía)
+            // Obtener tamaÃ±o del archivo (puede ser -1 si el servidor no lo envÃ­a)
             long fileSize = conn.getContentLengthLong();
             boolean conoceTamano = fileSize > 0;
-            
-            if (conoceTamano) {
-                double fileSizeMB = fileSize / (1024.0 * 1024.0);
-                System.out.printf("    Tamaño: %.2f MB%n", fileSizeMB);
-            } else {
-                System.out.println("    Tamaño: desconocido");
-            }
             
             try (InputStream in = conn.getInputStream();
                  OutputStream out = Files.newOutputStream(Paths.get(nombreArchivo))) {
@@ -213,7 +202,7 @@ public class EnlaceAnyoMesExtractor {
                     }
                 }
                 
-                // Mostrar tamaño final
+                // Mostrar resultado final
                 double finalSizeMB = totalBytesRead / (1024.0 * 1024.0);
                 System.out.printf("    [OK] Descarga completada: %s (%.2f MB)%n", nombreArchivo, finalSizeMB);
             }
@@ -232,8 +221,7 @@ public class EnlaceAnyoMesExtractor {
             
             System.out.println("Subiendo a SharePoint: " + nombreArchivo);
             
-            URL url = new URL(restUrl);
-            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            HttpsURLConnection conn = (HttpsURLConnection) URI.create(restUrl).toURL().openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setConnectTimeout(30000);
@@ -245,8 +233,6 @@ public class EnlaceAnyoMesExtractor {
             conn.setRequestProperty("Content-Type", "application/octet-stream");
             
             // Subir archivo
-            long fileSize = Files.size(Paths.get(archivoLocal));
-            
             try (InputStream fileIn = Files.newInputStream(Paths.get(archivoLocal));
                  OutputStream out = conn.getOutputStream()) {
                 byte[] buffer = new byte[8192];
@@ -262,21 +248,22 @@ public class EnlaceAnyoMesExtractor {
             }
             
             int responseCode = conn.getResponseCode();
-            System.out.println("Código de respuesta: " + responseCode);
+            System.out.println("CÃ³digo de respuesta: " + responseCode);
             
             if (responseCode >= 200 && responseCode < 300) {
                 System.out.println("Archivo subido exitosamente a SharePoint: " + nombreArchivo);
-                // Eliminar archivo local después de subir
+                // Eliminar archivo local despuÃ©s de subir
                 Files.delete(Paths.get(archivoLocal));
                 System.out.println("Archivo local eliminado: " + archivoLocal);
             } else {
-                System.err.println("Error al subir a SharePoint. Código: " + responseCode);
+                System.err.println("Error al subir a SharePoint. CÃ³digo: " + responseCode);
                 System.err.println("Respuesta: " + conn.getResponseMessage());
                 try (InputStream errorStream = conn.getErrorStream()) {
                     if (errorStream != null) {
-                        Scanner scanner = new Scanner(errorStream).useDelimiter("\\A");
-                        String response = scanner.hasNext() ? scanner.next() : "";
-                        System.err.println("Detalle error: " + response);
+                        try (Scanner scanner = new Scanner(errorStream).useDelimiter("\\A")) {
+                            String response = scanner.hasNext() ? scanner.next() : "";
+                            System.err.println("Detalle error: " + response);
+                        }
                     }
                 }
             }
@@ -441,7 +428,7 @@ public class EnlaceAnyoMesExtractor {
             
             double totalSizeMB = totalSize / (1024.0 * 1024.0);
             System.out.printf("\nTotal: %d archivos, %.2f MB%n", excelFiles.size(), totalSizeMB);
-            System.out.println("Ubicación: " + excelDir);
+            System.out.println("UbicaciÃ³n: " + excelDir);
         } catch (IOException e) {
             System.err.println("Error al mostrar resumen: " + e.getMessage());
         }

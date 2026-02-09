@@ -12,26 +12,26 @@ import java.util.List;
 /**
  * Sistema de logging para OpenPLACSP.
  * 
- * Características:
- * - Un único archivo de log (placsp.log)
- * - Conserva automáticamente solo las líneas de los últimos N días (configurable)
+ * CaracterÃ­sticas:
+ * - Un Ãºnico archivo de log (placsp.log)
+ * - Conserva automÃ¡ticamente solo las lÃ­neas de los Ãºltimos N dÃ­as (configurable)
  * - Registro de descargas, subidas y errores
  * - Formato estructurado con timestamp
  * 
- * Parámetros configurables desde .env:
+ * ParÃ¡metros configurables desde .env:
  * - LOG_DIR: Directorio de logs
  * - LOG_FILE: Nombre del archivo de log
- * - MAX_LOG_DAYS: Días máximos de antigüedad
+ * - MAX_LOG_DAYS: DÃ­as mÃ¡ximos de antigÃ¼edad
  * 
  * Uso:
  *   PlacspLogger.info("Mensaje informativo");
  *   PlacspLogger.download("archivo.zip", "https://url.com", true);
  *   PlacspLogger.upload("archivo.xlsx", "SharePoint/ruta", true);
- *   PlacspLogger.error("Descripción del error", excepcion);
+ *   PlacspLogger.error("DescripciÃ³n del error", excepcion);
  */
 public class PlacspLogger {
 
-    // Configuración cargada desde EnvConfig
+    // ConfiguraciÃ³n cargada desde EnvConfig
     private static String LOG_DIR;
     private static String LOG_FILE;
     private static int MAX_LOG_DAYS;
@@ -66,7 +66,7 @@ public class PlacspLogger {
      * Constructor privado (singleton).
      */
     private PlacspLogger() {
-        // Cargar configuración desde EnvConfig
+        // Cargar configuraciÃ³n desde EnvConfig
         LOG_DIR = EnvConfig.getLogDir();
         LOG_FILE = EnvConfig.getLogFile();
         MAX_LOG_DAYS = EnvConfig.getMaxLogDays();
@@ -84,7 +84,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Inicializa el logger y limpia líneas antiguas.
+     * Inicializa el logger y limpia lÃ­neas antiguas.
      */
     private void initializeLogger() {
         try {
@@ -92,7 +92,7 @@ public class PlacspLogger {
             Files.createDirectories(Paths.get(LOG_DIR));
             logPath = Paths.get(LOG_DIR, LOG_FILE);
 
-            // Limpiar líneas antiguas (más de N días según configuración)
+            // Limpiar lÃ­neas antiguas (mÃ¡s de N dÃ­as segÃºn configuraciÃ³n)
             cleanOldLines();
 
             // Abrir archivo de log en modo append
@@ -120,8 +120,8 @@ public class PlacspLogger {
     }
 
     /**
-     * Elimina líneas del log con más de 30 días.
-     * Lee el archivo, filtra las líneas recientes y reescribe.
+     * Elimina lÃ­neas del log con mÃ¡s de 30 dÃ­as.
+     * Lee el archivo, filtra las lÃ­neas recientes y reescribe.
      */
     private void cleanOldLines() {
         if (!Files.exists(logPath)) {
@@ -139,7 +139,7 @@ public class PlacspLogger {
             int removedCount = 0;
 
             for (String line : allLines) {
-                // Intentar extraer la fecha de la línea [YYYY-MM-DD HH:mm:ss]
+                // Intentar extraer la fecha de la lÃ­nea [YYYY-MM-DD HH:mm:ss]
                 if (line.startsWith("[") && line.length() >= 11) {
                     try {
                         String dateStr = line.substring(1, 11);
@@ -147,23 +147,23 @@ public class PlacspLogger {
                         
                         if (lineDate.isBefore(cutoffDate)) {
                             removedCount++;
-                            continue; // Saltar línea antigua
+                            continue; // Saltar lÃ­nea antigua
                         }
                     } catch (Exception e) {
-                        // Si no se puede parsear la fecha, conservar la línea
+                        // Si no se puede parsear la fecha, conservar la lÃ­nea
                     }
                 }
                 recentLines.add(line);
             }
 
-            // Si se eliminaron líneas, reescribir el archivo
+            // Si se eliminaron lÃ­neas, reescribir el archivo
             if (removedCount > 0) {
                 Files.write(logPath, recentLines, StandardCharsets.UTF_8);
-                System.out.println("[Logger] Limpieza: " + removedCount + " líneas antiguas eliminadas");
+                System.out.println("[Logger] Limpieza: " + removedCount + " lÃ­neas antiguas eliminadas");
             }
 
         } catch (IOException e) {
-            System.err.println("[Logger] Error limpiando líneas antiguas: " + e.getMessage());
+            System.err.println("[Logger] Error limpiando lÃ­neas antiguas: " + e.getMessage());
         }
     }
 
@@ -214,7 +214,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra una descarga con tamaño en MB.
+     * Registra una descarga con tamaÃ±o en MB.
      */
     public static void download(String fileName, String url, double sizeMB, boolean success) {
         String status = success ? "OK" : "FALLIDO";
@@ -231,7 +231,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra una subida con tamaño en MB.
+     * Registra una subida con tamaÃ±o en MB.
      */
     public static void upload(String fileName, String destination, double sizeMB, boolean success) {
         String status = success ? "OK" : "FALLIDO";
@@ -248,12 +248,12 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra un error con excepción.
+     * Registra un error con excepciÃ³n.
      */
     public static void error(String message, Throwable throwable) {
         String fullMessage = message;
         if (throwable != null) {
-            fullMessage += " | Excepción: " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
+            fullMessage += " | ExcepciÃ³n: " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
         }
         getInstance().writeLog(Level.ERROR, fullMessage);
     }
@@ -266,14 +266,14 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra el inicio de una sesión de trabajo.
+     * Registra el inicio de una sesion de trabajo.
      */
     public static void startSession() {
-        getInstance().writeLog(Level.INFO, "========== INICIO DE SESIÓN ==========");
+        getInstance().writeLog(Level.INFO, "========== INICIO DE SESION ==========");
     }
 
     /**
-     * Registra el inicio de una sesión con información adicional.
+     * Registra el inicio de una sesion con informacion adicional.
      */
     public static void startSession(int urlCount) {
         startSession();
@@ -281,11 +281,11 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra el fin de una sesión de trabajo.
+     * Registra el fin de una sesion de trabajo.
      */
     public static void endSession(long durationSeconds) {
         getInstance().writeLog(Level.INFO, 
-            String.format("========== FIN DE SESIÓN (Duración: %d segundos) ==========", durationSeconds));
+            String.format("========== FIN DE SESION (Duracion: %d segundos) ==========", durationSeconds));
     }
 
     /**
