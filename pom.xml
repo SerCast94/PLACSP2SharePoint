@@ -19,13 +19,7 @@
             <artifactId>jsoup</artifactId>
             <version>1.15.3</version>
         </dependency>
-        <!-- JSoup for HTML parsing -->
-        <dependency>
-            <groupId>org.jsoup</groupId>
-            <artifactId>jsoup</artifactId>
-            <version>1.15.3</version>
-        </dependency>
-        <!-- Apache POI (opcional, si usas Excel) -->
+        <!-- Apache POI para Excel -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
@@ -42,12 +36,6 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <version>1.11.0</version>
-        </dependency>
-        <!-- HTTP Client for Microsoft Graph -->
-        <dependency>
-            <groupId>com.microsoft.graph</groupId>
-            <artifactId>microsoft-graph-core</artifactId>
-            <version>3.0.1</version>
         </dependency>
     </dependencies>
     <build>
