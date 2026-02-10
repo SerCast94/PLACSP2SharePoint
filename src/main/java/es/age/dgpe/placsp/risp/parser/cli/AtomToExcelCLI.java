@@ -30,6 +30,8 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.purl.atompub.tombstones._1.DeletedEntryType;
 import org.w3._2005.atom.EntryType;
 import org.w3._2005.atom.FeedType;
@@ -166,7 +168,7 @@ private static String limpiarSaltosDeLinea(String texto) {
     // 6. Filtrar caracteres problemáticos según tu patrón
     limpio = POWERBI_PROBLEMATIC.matcher(limpio).replaceAll("");
 
-    // 7. Convertir guiones “bonitos” a ASCII
+    // 7. Convertir guiones "bonitos" a ASCII
     limpio = limpio
         .replace('\u2010', '-')  // hyphen
         .replace('\u2011', '-')  // non-breaking hyphen
@@ -373,9 +375,6 @@ private static String limpiarSaltosDeLinea(String texto) {
         }
 
         try {
-            // Stream de salida
-            output_file = new FileOutputStream(new File(args.outPath));
-
             // JAXB
             JAXBContext jc = JAXBContext.newInstance(
                 "org.w3._2005.atom:org.dgpe.codice.common.caclib:org.dgpe.codice.common.cbclib:ext.place.codice.common.caclib:ext.place.codice.common.cbclib:org.purl.atompub.tombstones._1");
@@ -485,10 +484,18 @@ private static String limpiarSaltosDeLinea(String texto) {
 
             // Eliminar hojas no deseadas antes de guardar (Presentacion y Resultados)
             SXSSFWorkbook wb = spreeadSheetManager.getWorkbook();
-            // Eliminar hoja "Presentacion" si existe
+            // Eliminar hoja "Presentacion" si existe (con variantes de nombre)
             int idxPresentacion = wb.getSheetIndex("Presentación");
             if (idxPresentacion >= 0) {
                 wb.removeSheetAt(idxPresentacion);
+            }
+            int idxPresentacion2 = wb.getSheetIndex("Presentacion");
+            if (idxPresentacion2 >= 0) {
+                wb.removeSheetAt(idxPresentacion2);
+            }
+            int idxPresentacion3 = wb.getSheetIndex("PRESENTACION");
+            if (idxPresentacion3 >= 0) {
+                wb.removeSheetAt(idxPresentacion3);
             }
             // Eliminar hoja "Resultados" si existe
             int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
@@ -496,11 +503,63 @@ private static String limpiarSaltosDeLinea(String texto) {
                 wb.removeSheetAt(idxResultados);
             }
 
-            spreeadSheetManager.getWorkbook().write(output_file);
-            output_file.close();
-            spreeadSheetManager.getWorkbook().close();
+            // ===================================================================
+            // 🔥 MODIFICACIÓN CLAVE: Conversión SXSSF → XSSF para Power BI
+            // ===================================================================
+            // 1. Crear archivo temporal con SXSSF
+            File tempFile = File.createTempFile("temp_excel_", ".xlsx");
+            try (FileOutputStream tempFos = new FileOutputStream(tempFile)) {
+                wb.write(tempFos);
+            } finally {
+                wb.dispose(); // Importante: liberar recursos de SXSSF
+                wb.close();
+            }
+
+            // 2. Leer archivo temporal con XSSF y reparar estructura
+            try (XSSFWorkbook xssfWorkbook = new XSSFWorkbook(tempFile);
+                 FileOutputStream finalFos = new FileOutputStream(args.outPath)) {
+                
+                // Eliminar hojas no deseadas en el XSSFWorkbook (por si acaso)
+                int idxPresentacionX = xssfWorkbook.getSheetIndex("Presentación");
+                if (idxPresentacionX >= 0) {
+                    xssfWorkbook.removeSheetAt(idxPresentacionX);
+                }
+                int idxPresentacionX2 = xssfWorkbook.getSheetIndex("Presentacion");
+                if (idxPresentacionX2 >= 0) {
+                    xssfWorkbook.removeSheetAt(idxPresentacionX2);
+                }
+                int idxPresentacionX3 = xssfWorkbook.getSheetIndex("PRESENTACION");
+                if (idxPresentacionX3 >= 0) {
+                    xssfWorkbook.removeSheetAt(idxPresentacionX3);
+                }
+
+                // Añadir metadatos personalizados a la hoja "Licitaciones"
+                POIXMLProperties props = xssfWorkbook.getProperties();
+                POIXMLProperties.CustomProperties customProps = props.getCustomProperties();
+                customProps.addProperty("Name", "Licitaciones");
+                customProps.addProperty("Data", "Table");
+                customProps.addProperty("Item", "Licitaciones");
+                customProps.addProperty("Kind", "Sheet");
+                customProps.addProperty("Hidden", false);
+
+                // Forzar la creación de componentes necesarios si faltan
+                if (xssfWorkbook.getNumberOfSheets() == 0) {
+                    xssfWorkbook.createSheet("Licitaciones");
+                }
+                
+                // Asegurar que haya al menos un estilo definido
+                if (xssfWorkbook.getNumCellStyles() == 0) {
+                    xssfWorkbook.createCellStyle();
+                }
+
+                // Escribir el archivo final con XSSF (compatible con Power BI)
+                xssfWorkbook.write(finalFos);
+            }
+
+            // 3. Eliminar archivo temporal
+            tempFile.delete();
             
-            System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " Ãºnicas");
+            System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " únicas");
 
         } catch (JAXBException e) {
             // Error al procesar el fichero ATOM
@@ -554,7 +613,7 @@ private static String limpiarSaltosDeLinea(String texto) {
             if (datoCodice instanceof BigDecimal) {
                 cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
             } else if (datoCodice instanceof String) {
-                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripciÃ³n)
+                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripción)
                 if (dato == DatosLicitacionGenerales.OBJETO_CONTRATO
                 ) {
                     cell.setCellValue((String) datoCodice);
@@ -688,7 +747,7 @@ private static String limpiarSaltosDeLinea(String texto) {
             if (datoCodice instanceof BigDecimal) {
                 cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
             } else if (datoCodice instanceof String) {
-                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripciÃ³n)
+                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripción)
                 if (dato == DatosEMP.OBJETO_CONTRATO) {
                     cell.setCellValue(limpiarSaltosDeLinea((String) datoCodice));
                 } else {
@@ -742,7 +801,7 @@ private static String limpiarSaltosDeLinea(String texto) {
             if (datoCodice instanceof BigDecimal) {
                 cell.setCellValue((double) ((BigDecimal)datoCodice).doubleValue());
             } else if (datoCodice instanceof String) {
-                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripciÃ³n)
+                // Solo aplicar limpieza al campo OBJETO_CONTRATO (descripción)
                 if (dato == DatosCPM.OBJETO_CONTRATO) {
                     cell.setCellValue(limpiarSaltosDeLinea((String) datoCodice));
                 } else {
@@ -873,7 +932,7 @@ private static String limpiarSaltosDeLinea(String texto) {
                 }
             }
             boolean ok = !inPaths.isEmpty() && out != null;
-            // Si faltan argumentos, usamos defaults si estÃ¡n configurados
+            // Si faltan argumentos, usamos defaults si están configurados
             if (!ok && AtomToExcelCLI.DEFAULT_IN_PATH != null && !AtomToExcelCLI.DEFAULT_IN_PATH.isEmpty()
                     && AtomToExcelCLI.DEFAULT_OUT_PATH != null && !AtomToExcelCLI.DEFAULT_OUT_PATH.isEmpty()) {
                 if (inPaths.isEmpty()) {
@@ -889,17 +948,17 @@ private static String limpiarSaltosDeLinea(String texto) {
 
         String usage() {
             return "Uso:\n" +
-                   "  --in <path>        Fichero ATOM o ZIP (puede repetirse para mÃºltiples archivos)\n" +
+                   "  --in <path>        Fichero ATOM o ZIP (puede repetirse para múltiples archivos)\n" +
                    "  --out <path.xlsx>  Fichero Excel de salida\n" +
                    "  [--dos-tablas]     Separar licitaciones y resultados\n" +
                    "  [--sin-emp]        No incluir hoja EMP\n" +
                    "  [--sin-cpm]        No incluir hoja CPM\n" +
                    "  [--help]           Mostrar esta ayuda\n" +
-                   "\nSi --in es un .zip, se descomprimirÃ¡ automÃ¡ticamente\n" +
-                   "y se buscarÃ¡ el .atom con el mismo nombre.\n" +
-                   "\nPuedes especificar mÃºltiples --in para combinar varias fuentes ATOM\n" +
-                   "en un Ãºnico archivo Excel.\n" +
-                   "\nTambiÃ©n puedes editar en la clase:\n" +
+                   "\nSi --in es un .zip, se descomprimirá automáticamente\n" +
+                   "y se buscará el .atom con el mismo nombre.\n" +
+                   "\nPuedes especificar múltiples --in para combinar varias fuentes ATOM\n" +
+                   "en un único archivo Excel.\n" +
+                   "\nTambién puedes editar en la clase:\n" +
                    "  DEFAULT_IN_PATH  y DEFAULT_OUT_PATH para ejecutar sin argumentos";
         }
     }
