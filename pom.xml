@@ -81,7 +81,7 @@
                 <configuration>
                     <source>21</source>
                     <target>21</target>
-                    <encoding>Cp1252</encoding>
+                    <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
             <plugin>

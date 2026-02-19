@@ -169,7 +169,7 @@ Si modifica el código fuente, recompile con:
 
 ```cmd
 :: Compilar modelos (encoding Windows-1252)
-javac -encoding Cp1252 -cp "lib\*" -d target\classes ^
+javac -encoding UTF-8 -cp "lib\*" -d target\classes ^
     src\main\java\es\age\dgpe\placsp\risp\parser\model\*.java
 
 :: Compilar resto (encoding UTF-8)

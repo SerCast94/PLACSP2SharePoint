@@ -23,7 +23,7 @@ COPY pom.xml ./
 RUN mkdir -p target/classes descargas descargas/atom descargas/excel logs
 
 # Compilar las clases model (encoding Windows-1252)
-RUN javac -encoding Cp1252 -d target/classes -cp "lib/*" \
+RUN javac -encoding UTF-8 -d target/classes -cp "lib/*" \
     src/main/java/es/age/dgpe/placsp/risp/parser/model/*.java
 
 # Compilar el resto de clases (encoding UTF-8)
