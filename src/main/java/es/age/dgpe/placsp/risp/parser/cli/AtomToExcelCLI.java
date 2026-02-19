@@ -38,7 +38,6 @@ import org.w3._2005.atom.FeedType;
 import org.w3._2005.atom.LinkType;
 
 import com.ibm.icu.text.Normalizer2;
-import com.ibm.icu.text.Transliterator;
 
 import es.age.dgpe.placsp.risp.parser.model.DatosCPM;
 import es.age.dgpe.placsp.risp.parser.model.DatosEMP;
@@ -63,9 +62,6 @@ public class AtomToExcelCLI {
 
     private static Unmarshaller atomUnMarshaller;
 
-    // Transliterator de ICU4J para limpieza exhaustiva de texto (thread-safe, reutilizable)
-    private static final Transliterator LATIN_ASCII = Transliterator.getInstance(
-            "Any-Latin; Latin-ASCII; [\u0080-\uFFFF] Remove");
     private static final Normalizer2 NFC_NORMALIZER = Normalizer2.getNFCInstance();
     
     // Patron precompilado para caracteres problematicos en Power BI M
@@ -359,7 +355,6 @@ private static String limpiarSaltosDeLinea(String texto) {
         int numeroFicherosProcesados = 0;
 
         FeedType res = null;
-        FileOutputStream output_file = null;
         InputStreamReader inStream = null;
 
         ArrayList<DatosLicitacionGenerales> seleccionLicitacionGenerales = new ArrayList<>(Arrays.asList(DatosLicitacionGenerales.values()));
@@ -480,23 +475,10 @@ private static String limpiarSaltosDeLinea(String texto) {
                 System.out.println("  Procesados " + numeroFicherosProcesados + " ficheros ATOM de esta fuente");
             }
 
-            // spreeadSheetManager.insertarFiltro(seleccionLicitacionGenerales.size(), seleccionLicitacionResultados.size(), seleccionEncargosMediosPropios.size(), seleccionConsultasPreliminares.size());
 
-            // Eliminar hojas no deseadas antes de guardar (Presentacion y Resultados)
+            // Eliminar hojas que contengan "presentacion" (ignorando mayúsculas, minúsculas y tildes)
             SXSSFWorkbook wb = spreeadSheetManager.getWorkbook();
-            // Eliminar hoja "Presentacion" si existe (con variantes de nombre)
-            int idxPresentacion = wb.getSheetIndex("Presentación");
-            if (idxPresentacion >= 0) {
-                wb.removeSheetAt(idxPresentacion);
-            }
-            int idxPresentacion2 = wb.getSheetIndex("Presentacion");
-            if (idxPresentacion2 >= 0) {
-                wb.removeSheetAt(idxPresentacion2);
-            }
-            int idxPresentacion3 = wb.getSheetIndex("PRESENTACION");
-            if (idxPresentacion3 >= 0) {
-                wb.removeSheetAt(idxPresentacion3);
-            }
+            eliminarHojasPresentacion(wb);
             // Eliminar hoja "Resultados" si existe
             int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
             if (idxResultados >= 0) {
@@ -515,23 +497,13 @@ private static String limpiarSaltosDeLinea(String texto) {
                 wb.close();
             }
 
+
             // 2. Leer archivo temporal con XSSF y reparar estructura
             try (XSSFWorkbook xssfWorkbook = new XSSFWorkbook(tempFile);
                  FileOutputStream finalFos = new FileOutputStream(args.outPath)) {
-                
+
                 // Eliminar hojas no deseadas en el XSSFWorkbook (por si acaso)
-                int idxPresentacionX = xssfWorkbook.getSheetIndex("Presentación");
-                if (idxPresentacionX >= 0) {
-                    xssfWorkbook.removeSheetAt(idxPresentacionX);
-                }
-                int idxPresentacionX2 = xssfWorkbook.getSheetIndex("Presentacion");
-                if (idxPresentacionX2 >= 0) {
-                    xssfWorkbook.removeSheetAt(idxPresentacionX2);
-                }
-                int idxPresentacionX3 = xssfWorkbook.getSheetIndex("PRESENTACION");
-                if (idxPresentacionX3 >= 0) {
-                    xssfWorkbook.removeSheetAt(idxPresentacionX3);
-                }
+                eliminarHojasPresentacion(xssfWorkbook);
 
                 // Añadir metadatos personalizados a la hoja "Licitaciones"
                 POIXMLProperties props = xssfWorkbook.getProperties();
@@ -546,7 +518,7 @@ private static String limpiarSaltosDeLinea(String texto) {
                 if (xssfWorkbook.getNumberOfSheets() == 0) {
                     xssfWorkbook.createSheet("Licitaciones");
                 }
-                
+
                 // Asegurar que haya al menos un estilo definido
                 if (xssfWorkbook.getNumCellStyles() == 0) {
                     xssfWorkbook.createCellStyle();
@@ -558,7 +530,7 @@ private static String limpiarSaltosDeLinea(String texto) {
 
             // 3. Eliminar archivo temporal
             tempFile.delete();
-            
+
             System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " únicas");
 
         } catch (JAXBException e) {
@@ -570,6 +542,43 @@ private static String limpiarSaltosDeLinea(String texto) {
         } catch (Exception e) {
             // Error inesperado
             throw e;
+        }
+    }
+
+
+    // Elimina todas las hojas cuyo nombre contenga "presentacion" (ignorando mayúsculas, minúsculas y tildes)
+    private void eliminarHojasPresentacion(org.apache.poi.ss.usermodel.Workbook workbook) {
+        System.out.println("[DEBUG] Hojas antes de eliminar Presentación: ");
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            System.out.println("  - '" + workbook.getSheetName(i) + "'");
+        }
+
+        java.util.List<String> hojasAEliminar = new java.util.ArrayList<>();
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            String nombre = workbook.getSheetName(i);
+            // Normalizar a Unicode NFD y eliminar diacríticos
+            String nombreNormalizado = java.text.Normalizer.normalize(nombre, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase()
+                .replace("ñ", "n")
+                .replace("ç", "c")
+                .replace("\u00a0", " ") // espacio no separable
+                .replaceAll("[^a-z0-9 ]", "").trim();
+            // También buscar variantes con cualquier carácter entre "presentaci" y "n"
+            if (nombreNormalizado.matches(".*presentaci.n.*")) {
+                hojasAEliminar.add(nombre);
+            }
+        }
+        for (String hoja : hojasAEliminar) {
+            int idx = workbook.getSheetIndex(hoja);
+            if (idx >= 0) {
+                System.out.println("[INFO] Eliminando hoja: '" + hoja + "' (idx=" + idx + ")");
+                workbook.removeSheetAt(idx);
+            }
+        }
+        System.out.println("[DEBUG] Hojas después de eliminar Presentación: ");
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            System.out.println("  - '" + workbook.getSheetName(i) + "'");
         }
     }
 
