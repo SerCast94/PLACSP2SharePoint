@@ -30,6 +30,13 @@ public class FileSystemException extends PlacspException {
         );
     }
 
+    public static FileSystemException emptyFile(String path) {
+        return new FileSystemException(
+            "ERR_EMPTY_FILE",
+            "El archivo está vacío: " + path
+        );
+    }
+
     public static FileSystemException directoryNotFound(String path) {
         return new FileSystemException(
             "ERR_DIR_NOT_FOUND",

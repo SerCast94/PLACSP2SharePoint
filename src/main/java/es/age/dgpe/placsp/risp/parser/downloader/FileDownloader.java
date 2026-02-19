@@ -6,7 +6,6 @@ import es.age.dgpe.placsp.risp.parser.exceptions.FileSystemException;
 import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
 import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
 
-import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -159,7 +158,7 @@ public class FileDownloader {
             cleanupFailedDownload(filePath);
             throw DownloadException.connectionInterrupted(urlStr, e);
             
-        } catch (DownloadException | NetworkException e) {
+        } catch (DownloadException e) {
             // Re-lanzar excepciones ya tipificadas
             throw e;
             

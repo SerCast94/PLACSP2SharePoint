@@ -95,6 +95,43 @@ public class SharePointException extends PlacspException {
         );
     }
 
+    public static SharePointException accessDenied(String resource, String details) {
+        return new SharePointException(
+            "ERR_ACCESS_DENIED",
+            "Acceso denegado al recurso de SharePoint: " + resource + " - " + details
+        );
+    }
+
+    public static SharePointException uploadFailed(String fileName, String message, Throwable cause) {
+        return new SharePointException(
+            "ERR_UPLOAD_FAILED",
+            "Error al subir '" + fileName + "' a SharePoint: " + message,
+            cause
+        );
+    }
+
+    public static SharePointException rateLimitExceeded() {
+        return new SharePointException(
+            "ERR_RATE_LIMIT",
+            "Se ha excedido el límite de solicitudes a Graph API. Intente de nuevo más tarde."
+        );
+    }
+
+    public static SharePointException serverError(int httpCode, String errorMessage) {
+        return new SharePointException(
+            "ERR_SERVER_" + httpCode,
+            "Error del servidor SharePoint (HTTP " + httpCode + "): " + errorMessage
+        );
+    }
+
+    public static SharePointException connectionError(String host, Throwable cause) {
+        return new SharePointException(
+            "ERR_CONNECTION",
+            "Error de conexión con " + host,
+            cause
+        );
+    }
+
     public static SharePointException graphApiError(int httpStatus, String errorMessage) {
         return new SharePointException(
             "ERR_GRAPH_API_" + httpStatus,

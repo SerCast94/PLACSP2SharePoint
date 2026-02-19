@@ -47,6 +47,12 @@ public class NetworkException extends PlacspException {
         );
     }
 
+    public static NetworkException timeout(String url, int timeoutSeconds) {
+        return new NetworkException(
+            "Timeout de " + timeoutSeconds + "s al conectar con: " + url + " - El servidor no respondió a tiempo"
+        );
+    }
+
     public static NetworkException dnsNotResolved(String url, Throwable cause) {
         return new NetworkException(
             "No se pudo resolver el nombre del servidor: " + url + " - Verifique la URL o la conexión a Internet", 
@@ -54,10 +60,22 @@ public class NetworkException extends PlacspException {
         );
     }
 
+    public static NetworkException dnsNotResolved(String host) {
+        return new NetworkException(
+            "No se pudo resolver el nombre del servidor: " + host + " - Verifique la URL o la conexión a Internet"
+        );
+    }
+
     public static NetworkException connectionRefused(String url, Throwable cause) {
         return new NetworkException(
             "Conexión rechazada por el servidor: " + url + " - El servidor puede estar caído o bloqueando conexiones", 
             cause
+        );
+    }
+
+    public static NetworkException connectionRefused(String host, int port) {
+        return new NetworkException(
+            "Conexión rechazada por " + host + ":" + port + " - El servidor puede estar caído o bloqueando conexiones"
         );
     }
 

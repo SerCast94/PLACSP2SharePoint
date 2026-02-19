@@ -22,8 +22,6 @@ import java.time.LocalDate;
 
 import es.age.dgpe.placsp.risp.parser.exceptions.ConversionException;
 import es.age.dgpe.placsp.risp.parser.exceptions.DecompressionException;
-import es.age.dgpe.placsp.risp.parser.exceptions.FileSystemException;
-import es.age.dgpe.placsp.risp.parser.exceptions.MemoryException;
 import es.age.dgpe.placsp.risp.parser.exceptions.ValidationException;
 import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
 import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
@@ -427,11 +425,68 @@ public class AtomToExcelConverter {
     }
     
     /**
+     * Valida que el archivo Excel generado no esté corrupto.
+     * @throws ValidationException si el archivo está corrupto o vacío
+     */
+    private void validarExcelGenerado(Path excelPath) throws ValidationException {
+        String fileName = excelPath.getFileName().toString();
+        
+        // Verificar que existe
+        if (!Files.exists(excelPath)) {
+            throw ValidationException.emptyFile(fileName);
+        }
+        
+        try {
+            long size = Files.size(excelPath);
+            
+            // Verificar tamaño mínimo
+            if (size < MIN_EXCEL_SIZE_BYTES) {
+                throw ValidationException.fileTooSmall(fileName, MIN_EXCEL_SIZE_BYTES);
+            }
+            
+            // Verificar que es un archivo ZIP válido (los xlsx son archivos ZIP)
+            try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(excelPath.toFile())) {
+                // Verificar que tiene la estructura básica de un xlsx
+                if (zipFile.getEntry("[Content_Types].xml") == null) {
+                    throw ValidationException.excelCorrupted(fileName, 
+                        new Exception("No se encontró [Content_Types].xml - archivo corrupto"));
+                }
+            } catch (ZipException e) {
+                throw ValidationException.excelCorrupted(fileName, e);
+            }
+            
+            PlacspLogger.info("Validación OK: " + fileName + " (" + (size / 1024) + " KB)");
+            
+        } catch (IOException e) {
+            throw ValidationException.excelCorrupted(fileName, e);
+        }
+    }
+    
+    /**
      * Extrae TODOS los archivos ATOM de un ZIP y los guarda en el directorio especificado.
      * @return NÃºmero de archivos ATOM extraÃ­dos
+     * @throws DecompressionException si hay error al descomprimir
      */
-    private int extraerAtomDeZip(String zipFilePath, String atomDir) {
+    private int extraerAtomDeZip(String zipFilePath, String atomDir) throws DecompressionException {
         int contadorExtraidos = 0;
+        Path zipPath = Paths.get(zipFilePath);
+        String zipFileName = zipPath.getFileName().toString();
+        
+        // Verificar que el archivo ZIP existe
+        if (!Files.exists(zipPath)) {
+            throw new DecompressionException("ERR_ZIP_NOT_FOUND", "Archivo ZIP no encontrado: " + zipFilePath);
+        }
+        
+        // Verificar que no está vacío
+        try {
+            if (Files.size(zipPath) == 0) {
+                PlacspLogger.decompressionError(zipFileName, "ZIP_VACIO", null);
+                throw DecompressionException.emptyZip(zipFileName);
+            }
+        } catch (IOException e) {
+            throw new DecompressionException("Error al verificar tamaño del ZIP: " + zipFileName, e);
+        }
+        
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFilePath))) {
             ZipEntry entry;
             
@@ -442,16 +497,52 @@ public class AtomToExcelConverter {
                     
                     Path destino = Paths.get(atomDir, nombreAtom);
                     
-                    // Copiar el contenido
-                    Files.copy(zis, destino, StandardCopyOption.REPLACE_EXISTING);
-                    contadorExtraidos++;
+                    try {
+                        // Copiar el contenido
+                        Files.copy(zis, destino, StandardCopyOption.REPLACE_EXISTING);
+                        contadorExtraidos++;
+                    } catch (IOException e) {
+                        String errorMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+                        if (errorMsg.contains("no space") || errorMsg.contains("disk full") || errorMsg.contains("espacio")) {
+                            PlacspLogger.decompressionError(zipFileName, "DISCO_LLENO", e);
+                            throw DecompressionException.diskSpaceError(atomDir);
+                        } else if (errorMsg.contains("permission") || errorMsg.contains("denied")) {
+                            PlacspLogger.decompressionError(zipFileName, "PERMISO_DENEGADO", e);
+                            throw DecompressionException.permissionDenied(destino.toString(), e);
+                        }
+                        throw DecompressionException.extractionError(zipFileName, nombreAtom, e);
+                    }
                 }
                 zis.closeEntry();
             }
-            System.out.println("    [OK] Extraidos " + contadorExtraidos + " archivos ATOM");
+            
+            if (contadorExtraidos == 0) {
+                PlacspLogger.warning("ZIP sin archivos ATOM: " + zipFileName);
+            } else {
+                System.out.println("    [OK] Extraidos " + contadorExtraidos + " archivos ATOM");
+                PlacspLogger.info("Extraídos " + contadorExtraidos + " ATOMs de: " + zipFileName);
+            }
+            
+        } catch (ZipException e) {
+            PlacspLogger.decompressionError(zipFileName, "ZIP_CORRUPTO", e);
+            throw DecompressionException.corruptedZip(zipFileName, e);
+            
+        } catch (java.io.EOFException e) {
+            PlacspLogger.decompressionError(zipFileName, "ZIP_INCOMPLETO", e);
+            throw DecompressionException.corruptedZip(zipFileName, e);
+            
+        } catch (java.io.FileNotFoundException e) {
+            PlacspLogger.decompressionError(zipFileName, "ZIP_NO_ENCONTRADO", e);
+            throw new DecompressionException("ERR_ZIP_NOT_FOUND", "Archivo ZIP no encontrado: " + zipFilePath, e);
+            
+        } catch (DecompressionException e) {
+            throw e; // Re-lanzar excepciones ya tipificadas
+            
         } catch (IOException e) {
-            System.err.println("Error extrayendo ATOM de ZIP: " + e.getMessage());
+            PlacspLogger.decompressionError(zipFileName, "ERROR_IO", e);
+            throw new DecompressionException("Error al extraer archivos del ZIP: " + zipFileName, e);
         }
+        
         return contadorExtraidos;
     }
     
@@ -536,7 +627,12 @@ public class AtomToExcelConverter {
      * Usa 3 meses como valor por defecto.
      */
     public void convertirTodosZipAExcel(String zipDir, String excelDir) {
-        convertirTodosZipAExcel(zipDir, excelDir, zipDir + "/atom", 3);
+        try {
+            convertirTodosZipAExcel(zipDir, excelDir, zipDir + "/atom", 3);
+        } catch (ConversionException | DecompressionException e) {
+            System.err.println("Error en conversión: " + e.getMessage());
+            PlacspLogger.error("Error en conversión (compatibilidad)", e);
+        }
     }
 
     /**

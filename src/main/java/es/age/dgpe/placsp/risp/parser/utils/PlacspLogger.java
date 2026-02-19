@@ -29,7 +29,7 @@ import es.age.dgpe.placsp.risp.parser.exceptions.PlacspException;
  *   PlacspLogger.info("Mensaje informativo");
  *   PlacspLogger.download("archivo.zip", "https://url.com", true);
  *   PlacspLogger.upload("archivo.xlsx", "SharePoint/ruta", true);
- *   PlacspLogger.error("DescripciÃ³n del error", excepcion);
+ *   PlacspLogger.error("Descripcion del error", excepcion);
  */
 public class PlacspLogger {
 
@@ -112,11 +112,11 @@ public class PlacspLogger {
         // Cerrar writer anterior si existe
         closeWriter();
 
-        // Abrir en modo append con UTF-8
+        // Abrir en modo append con ISO-8859-1 (Latin1) para máxima compatibilidad
         writer = new PrintWriter(new BufferedWriter(
             new OutputStreamWriter(
                 new FileOutputStream(logPath.toFile(), true),
-                StandardCharsets.UTF_8
+                java.nio.charset.StandardCharsets.ISO_8859_1
             )
         ));
     }
@@ -216,7 +216,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra una descarga con tamaÃ±o en MB.
+     * Registra una descarga con tamano en MB.
      */
     public static void download(String fileName, String url, double sizeMB, boolean success) {
         String status = success ? "OK" : "FALLIDO";
@@ -233,7 +233,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra una subida con tamaÃ±o en MB.
+     * Registra una subida con tamano en MB.
      */
     public static void upload(String fileName, String destination, double sizeMB, boolean success) {
         String status = success ? "OK" : "FALLIDO";
@@ -250,12 +250,13 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra un error con excepciÃ³n.
+     * Registra un error con excepcion.
      */
     public static void error(String message, Throwable throwable) {
         String fullMessage = message;
         if (throwable != null) {
-            fullMessage += " | ExcepciÃ³n: " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
+            // Usar solo ASCII: 'Excepcion' sin tilde para máxima compatibilidad
+            fullMessage += " | Excepcion: " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
             
             // Incluir stack trace resumido (primeras 3 líneas relevantes)
             StackTraceElement[] stackTrace = throwable.getStackTrace();
@@ -309,6 +310,13 @@ public class PlacspLogger {
     }
 
     /**
+     * Alias para warning - registra un aviso.
+     */
+    public static void warn(String message) {
+        warning(message);
+    }
+
+    /**
      * Registra el inicio de una sesion de trabajo.
      */
     public static void startSession() {
@@ -343,6 +351,13 @@ public class PlacspLogger {
     }
 
     /**
+     * Registra un error de red (sobrecarga simple).
+     */
+    public static void networkError(String message) {
+        getInstance().writeLog(Level.ERROR, "[RED] " + message);
+    }
+
+    /**
      * Registra un error de conversión.
      */
     public static void conversionError(String inputFile, String outputFile, String errorType, Throwable cause) {
@@ -360,7 +375,12 @@ public class PlacspLogger {
         String message = String.format("[%s] Recurso: %s | Error: %s", operation, resource, errorMsg);
         getInstance().writeLog(Level.ERROR, "[SHAREPOINT] " + message);
     }
-
+    /**
+     * Registra un error de SharePoint (sobrecarga simple).
+     */
+    public static void sharePointError(String message) {
+        getInstance().writeLog(Level.ERROR, "[SHAREPOINT] " + message);
+    }
     /**
      * Registra un error de SharePoint con código HTTP.
      */
@@ -389,6 +409,13 @@ public class PlacspLogger {
     }
 
     /**
+     * Registra un error de validación (sobrecarga simple).
+     */
+    public static void validationError(String message) {
+        getInstance().writeLog(Level.ERROR, "[VALIDACION] " + message);
+    }
+
+    /**
      * Registra un error de memoria.
      */
     public static void memoryError(String operation, long usedMB, long maxMB, Throwable cause) {
@@ -396,6 +423,13 @@ public class PlacspLogger {
         if (cause != null) {
             message += " | " + cause.getMessage();
         }
+        getInstance().writeLog(Level.ERROR, "[MEMORIA] " + message);
+    }
+
+    /**
+     * Registra un error de memoria (sobrecarga simple).
+     */
+    public static void memoryError(String message) {
         getInstance().writeLog(Level.ERROR, "[MEMORIA] " + message);
     }
 
@@ -411,10 +445,24 @@ public class PlacspLogger {
     }
 
     /**
+     * Registra un error del sistema de archivos (sobrecarga simple).
+     */
+    public static void fileSystemError(String message) {
+        getInstance().writeLog(Level.ERROR, "[FILESYSTEM] " + message);
+    }
+
+    /**
      * Registra un error de configuración.
      */
     public static void configError(String property, String details) {
         String message = String.format("Propiedad: %s | %s", property, details);
+        getInstance().writeLog(Level.ERROR, "[CONFIGURACION] " + message);
+    }
+
+    /**
+     * Registra un error de configuración (sobrecarga simple).
+     */
+    public static void configError(String message) {
         getInstance().writeLog(Level.ERROR, "[CONFIGURACION] " + message);
     }
 
