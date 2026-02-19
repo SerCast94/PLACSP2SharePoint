@@ -5,9 +5,17 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import es.age.dgpe.placsp.risp.parser.exceptions.DownloadException;
+import es.age.dgpe.placsp.risp.parser.exceptions.NetworkException;
 import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
+import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.net.ConnectException;
+import java.net.MalformedURLException;
+import javax.net.ssl.SSLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -23,6 +31,9 @@ public class WebScraper {
 
     // PatrÃ³n cargado desde configuraciÃ³n
     private final Pattern anyoMesPattern;
+    
+    // Timeouts configurables
+    private static final int DEFAULT_TIMEOUT_MS = 30000;
 
     /**
      * Constructor que carga el patrÃ³n desde configuraciÃ³n.
@@ -37,9 +48,10 @@ public class WebScraper {
      * 
      * @param url URL de la pÃ¡gina web a analizar
      * @return URL del archivo ZIP mÃ¡s reciente encontrado, o null si no se encuentra
-     * @throws IOException si hay error al conectar con la pÃ¡gina
+     * @throws NetworkException si hay error de red al conectar con la pÃ¡gina
+     * @throws DownloadException si no se encuentran enlaces
      */
-    public String extraerPrimerEnlaceAnyoMes(String url) throws IOException {
+    public String extraerPrimerEnlaceAnyoMes(String url) throws NetworkException, DownloadException {
         List<String> enlaces = extraerEnlacesAnyoMes(url, 1);
         return enlaces.isEmpty() ? null : enlaces.get(0);
     }
@@ -51,10 +63,47 @@ public class WebScraper {
      * @param url URL de la pÃ¡gina web a analizar
      * @param cantidad NÃºmero mÃ¡ximo de enlaces a devolver
      * @return Lista de URLs de archivos ZIP ordenados de mÃ¡s antiguo a mÃ¡s reciente
-     * @throws IOException si hay error al conectar con la pÃ¡gina
+     * @throws NetworkException si hay error de red al conectar con la pÃ¡gina
+     * @throws DownloadException si no se encuentran enlaces
      */
-    public List<String> extraerEnlacesAnyoMes(String url, int cantidad) throws IOException {
-        Document doc = Jsoup.connect(url).get();
+    public List<String> extraerEnlacesAnyoMes(String url, int cantidad) throws NetworkException, DownloadException {
+        Document doc;
+        
+        try {
+            doc = Jsoup.connect(url)
+                    .timeout(DEFAULT_TIMEOUT_MS)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .get();
+        } catch (SocketTimeoutException e) {
+            NetworkException ex = NetworkException.timeout(url, e);
+            PlacspLogger.networkError(url, "TIMEOUT", e);
+            throw ex;
+        } catch (UnknownHostException e) {
+            NetworkException ex = NetworkException.dnsNotResolved(url, e);
+            PlacspLogger.networkError(url, "DNS_NO_RESUELTO", e);
+            throw ex;
+        } catch (ConnectException e) {
+            NetworkException ex = NetworkException.connectionRefused(url, e);
+            PlacspLogger.networkError(url, "CONEXION_RECHAZADA", e);
+            throw ex;
+        } catch (SSLException e) {
+            NetworkException ex = NetworkException.sslError(url, e);
+            PlacspLogger.networkError(url, "ERROR_SSL", e);
+            throw ex;
+        } catch (MalformedURLException e) {
+            NetworkException ex = NetworkException.invalidUrl(url, e);
+            PlacspLogger.networkError(url, "URL_INVALIDA", e);
+            throw ex;
+        } catch (org.jsoup.HttpStatusException e) {
+            NetworkException ex = NetworkException.webDown(url, e.getStatusCode());
+            PlacspLogger.networkError(url, "HTTP_" + e.getStatusCode(), e);
+            throw ex;
+        } catch (IOException e) {
+            NetworkException ex = new NetworkException("Error de red al conectar con: " + url, e);
+            PlacspLogger.networkError(url, "ERROR_IO", e);
+            throw ex;
+        }
+        
         Elements links = doc.select("a[href]");
         
         // Lista de pares (fecha, enlace)
@@ -81,6 +130,12 @@ public class WebScraper {
             }
         }
         
+        if (enlacesConFecha.isEmpty()) {
+            PlacspLogger.warning("No se encontraron enlaces de descarga en: " + url);
+            // No lanzamos excepción aquí, simplemente devolvemos lista vacía
+            return new ArrayList<>();
+        }
+        
         // Ordenar por fecha descendente (mÃ¡s reciente primero)
         enlacesConFecha.sort((a, b) -> Integer.compare(b[0], a[0]));
         
@@ -96,6 +151,7 @@ public class WebScraper {
             resultadoFinal.add(resultado.get(i));
         }
         
+        PlacspLogger.info("Encontrados " + resultadoFinal.size() + " enlaces en: " + url);
         return resultadoFinal;
     }
 
