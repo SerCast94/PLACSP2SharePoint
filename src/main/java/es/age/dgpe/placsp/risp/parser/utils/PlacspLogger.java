@@ -27,11 +27,11 @@ import java.util.List;
  *   PlacspLogger.info("Mensaje informativo");
  *   PlacspLogger.download("archivo.zip", "https://url.com", true);
  *   PlacspLogger.upload("archivo.xlsx", "SharePoint/ruta", true);
- *   PlacspLogger.error("DescripciÃ³n del error", excepcion);
+ *   PlacspLogger.error("Descripcion del error", excepcion);
  */
 public class PlacspLogger {
 
-    // ConfiguraciÃ³n cargada desde EnvConfig
+    // Configuracion cargada desde EnvConfig
     private static String LOG_DIR;
     private static String LOG_FILE;
     private static int MAX_LOG_DAYS;
@@ -66,7 +66,7 @@ public class PlacspLogger {
      * Constructor privado (singleton).
      */
     private PlacspLogger() {
-        // Cargar configuraciÃ³n desde EnvConfig
+        // Cargar configuracion desde EnvConfig
         LOG_DIR = EnvConfig.getLogDir();
         LOG_FILE = EnvConfig.getLogFile();
         MAX_LOG_DAYS = EnvConfig.getMaxLogDays();
@@ -92,7 +92,7 @@ public class PlacspLogger {
             Files.createDirectories(Paths.get(LOG_DIR));
             logPath = Paths.get(LOG_DIR, LOG_FILE);
 
-            // Limpiar lÃ­neas antiguas (mÃ¡s de N dÃ­as segÃºn configuraciÃ³n)
+            // Limpiar lÃ­neas antiguas (mÃ¡s de N dÃ­as segÃºn configuracion)
             cleanOldLines();
 
             // Abrir archivo de log en modo append
@@ -248,12 +248,12 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra un error con excepciÃ³n.
+     * Registra un error con excepcion.
      */
     public static void error(String message, Throwable throwable) {
         String fullMessage = message;
         if (throwable != null) {
-            fullMessage += " | ExcepciÃ³n: " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
+            fullMessage += " | Excepcion: " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
         }
         getInstance().writeLog(Level.ERROR, fullMessage);
     }

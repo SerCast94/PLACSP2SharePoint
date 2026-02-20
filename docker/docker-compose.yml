@@ -16,7 +16,7 @@ services:
     
     environment:
       - TZ=Europe/Madrid
-      - CRON_SCHEDULE=0 2 * * *  # Todos los días a las 2 AM
+      - CRON_SCHEDULE=50 7 * * *  # Todos los días a las 7:50
       - JAVA_OPTS=-Xmx4g  # Recomendado para procesar 5+ meses de datos
       # Las demás variables se leen del archivo .env montado
     

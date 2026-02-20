@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2021 SubdirecciÃ³n General de CoordinaciÃ³n de la ContrataciÃ³n ElectrÃ³nica
+ * Copyright 2021 Subdireccion General de Coordinacion de la Contratacion Electronica
  * Licencia EUPL v1.2
  ******************************************************************************/
 package es.age.dgpe.placsp.risp.parser.utils;
@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * Clase centralizada para gestionar la configuraciÃ³n desde el archivo .env
+ * Clase centralizada para gestionar la configuracion desde el archivo .env
  * 
  * Uso:
  *   String valor = EnvConfig.get("MI_VARIABLE");
@@ -28,7 +28,7 @@ public class EnvConfig {
     private static final String ENV_FILE = ".env";
 
     /**
-     * Carga las variables del archivo .env con codificaciÃ³n UTF-8.
+     * Carga las variables del archivo .env con codificacion UTF-8.
      */
     private static synchronized void loadConfig() {
         if (config != null) return;
@@ -47,7 +47,7 @@ public class EnvConfig {
                         config.put(key, value);
                     }
                 }
-                System.out.println("[EnvConfig] Cargadas " + config.size() + " variables de configuraciÃ³n");
+                System.out.println("[EnvConfig] Cargadas " + config.size() + " variables de configuracion");
             } else {
                 System.out.println("[EnvConfig] Archivo .env no encontrado, usando valores por defecto");
             }
@@ -57,7 +57,7 @@ public class EnvConfig {
     }
 
     /**
-     * Obtiene una variable de configuraciÃ³n.
+     * Obtiene una variable de configuracion.
      * Busca primero en .env, luego en variables de entorno del sistema.
      * 
      * @param key Nombre de la variable
@@ -71,7 +71,7 @@ public class EnvConfig {
     }
 
     /**
-     * Obtiene una variable de configuraciÃ³n con valor por defecto.
+     * Obtiene una variable de configuracion con valor por defecto.
      * 
      * @param key Nombre de la variable
      * @param defaultValue Valor por defecto si no existe
@@ -83,7 +83,7 @@ public class EnvConfig {
     }
 
     /**
-     * Obtiene una variable de configuraciÃ³n como entero.
+     * Obtiene una variable de configuracion como entero.
      * 
      * @param key Nombre de la variable
      * @param defaultValue Valor por defecto si no existe o no es un nÃºmero
@@ -100,7 +100,7 @@ public class EnvConfig {
     }
 
     /**
-     * Obtiene una variable de configuraciÃ³n como booleano.
+     * Obtiene una variable de configuracion como booleano.
      * 
      * @param key Nombre de la variable
      * @param defaultValue Valor por defecto si no existe
@@ -113,10 +113,10 @@ public class EnvConfig {
     }
 
     /**
-     * Obtiene una variable de configuraciÃ³n como patrÃ³n regex compilado.
+     * Obtiene una variable de configuracion como patron regex compilado.
      * 
      * @param key Nombre de la variable
-     * @param defaultPattern PatrÃ³n por defecto si no existe
+     * @param defaultPattern Patron por defecto si no existe
      * @return Pattern compilado
      */
     public static Pattern getPattern(String key, String defaultPattern) {
@@ -137,7 +137,7 @@ public class EnvConfig {
     }
 
     /**
-     * Verifica si existe una variable de configuraciÃ³n.
+     * Verifica si existe una variable de configuracion.
      * 
      * @param key Nombre de la variable
      * @return true si existe
@@ -147,8 +147,8 @@ public class EnvConfig {
     }
 
     /**
-     * Recarga la configuraciÃ³n desde el archivo .env.
-     * Ãštil si se modifica el archivo en tiempo de ejecuciÃ³n.
+     * Recarga la configuracion desde el archivo .env.
+     * Ãštil si se modifica el archivo en tiempo de ejecucion.
      */
     public static void reload() {
         config = null;
@@ -198,7 +198,7 @@ public class EnvConfig {
         return get("EXCEL_OUTPUT_DIR", "descargas/excel");
     }
 
-    // ConfiguraciÃ³n de descarga
+    // Configuracion de descarga
     public static int getMesesHistorico() {
         return getInt("MESES_HISTORICO", 5);
     }
@@ -219,9 +219,14 @@ public class EnvConfig {
         return getInt("DOWNLOAD_PROGRESS_INTERVAL_MB", 10);
     }
 
-    // ConfiguraciÃ³n CLI
+    // Configuracion CLI
     public static String getCliCommand() {
-        return get("CLI_COMMAND", "placsp-cli.bat");
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("win")) {
+            return get("CLI_COMMAND", "placsp-cli.bat");
+        } else {
+            return get("CLI_COMMAND", "placsp-cli.sh");
+        }
     }
 
     public static boolean isCliDosTablas() {
@@ -236,7 +241,7 @@ public class EnvConfig {
         return getBoolean("CLI_INCLUIR_CPM", false);
     }
 
-    // ConfiguraciÃ³n de logging
+    // Configuracion de logging
     public static String getLogDir() {
         return get("LOG_DIR", "logs");
     }

@@ -15,28 +15,23 @@ WORKDIR /app
 # Copiar dependencias primero (mejor cache de Docker)
 COPY lib/ ./lib/
 
-# Copiar código fuente
+
+# Copiar código fuente y recursos
 COPY src/ ./src/
+COPY src/main/resources/gc/ ./gc/
 COPY pom.xml ./
 
 # Crear directorios necesarios
 RUN mkdir -p target/classes descargas descargas/atom descargas/excel logs
 
-# Compilar las clases model (encoding Windows-1252)
-RUN javac -encoding UTF-8 -d target/classes -cp "lib/*" \
-    src/main/java/es/age/dgpe/placsp/risp/parser/model/*.java
+# Compilar todo el código fuente Java en un solo paso (evita problemas de dependencias)
+RUN find src/main/java -name "*.java" > sources.txt \
+    && javac -encoding UTF-8 -d target/classes -cp "lib/*:./gc" @sources.txt
 
-# Compilar el resto de clases (encoding UTF-8)
-RUN javac -encoding UTF-8 -d target/classes -cp "lib/*:target/classes" \
-    src/main/java/es/age/dgpe/placsp/risp/parser/utils/*.java \
-    src/main/java/es/age/dgpe/placsp/risp/parser/utils/genericode/*.java \
-    src/main/java/es/age/dgpe/placsp/risp/parser/cli/*.java \
-    src/main/java/es/age/dgpe/placsp/risp/parser/uploader/*.java \
-    src/main/java/es/age/dgpe/placsp/risp/parser/downloader/*.java \
-    src/main/java/es/age/dgpe/placsp/risp/parser/converter/*.java \
-    src/main/java/es/age/dgpe/placsp/risp/parser/workflow/*.java
+# Copiar recursos de src/main/resources a target/classes (incluyendo jaxb.index, etc.)
+RUN cp -r src/main/resources/* target/classes/ 2>/dev/null || true
 
-# Copiar recursos
+# Copiar recursos adicionales del build local si existen
 COPY target/classes/gc/ ./target/classes/gc/
 COPY target/classes/templates/ ./target/classes/templates/
 COPY target/classes/*.properties ./target/classes/
@@ -55,10 +50,14 @@ ENV TZ=Europe/Madrid
 # Copiar archivo .env de ejemplo para referencia
 COPY .env.example ./.env.example
 
-# Script de entrada
-COPY docker/docker-entrypoint.sh /usr/local/bin/
+# Copiar script CLI para Linux
+COPY placsp-cli.sh /app/placsp-cli.sh
+RUN chmod +x /app/placsp-cli.sh
+
+# Copiar script de entrada correctamente
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Comando por defecto
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["run"]

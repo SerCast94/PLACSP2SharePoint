@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Orquestador principal del flujo de trabajo PLACSP.
- * Coordina las operaciones de descarga y conversiÃ³n de datos de contrataciÃ³n pÃºblica.
+ * Coordina las operaciones de descarga y conversion de datos de contratacion pÃºblica.
  * 
  * Flujo:
  * 1. Extrae enlaces de archivos ZIP desde pÃ¡ginas web gubernamentales
@@ -32,7 +32,7 @@ public class PlacspWorkflow {
     private final AtomToExcelConverter converter;
 
     static {
-        // Desactivar validaciÃ³n SSL si estÃ¡ configurado (solo para pruebas)
+        // Desactivar validacion SSL si estÃ¡ configurado (solo para pruebas)
         if (EnvConfig.isSslDisableValidation()) {
             try {
                 javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
@@ -68,13 +68,13 @@ public class PlacspWorkflow {
     }
 
     /**
-     * Ejecuta el proceso completo: descarga y conversiÃ³n.
+     * Ejecuta el proceso completo: descarga y conversion.
      * 
      * @param urls URLs de las pÃ¡ginas web donde buscar enlaces de descarga
      * @throws IOException si hay error en las operaciones de I/O
      */
     public void ejecutar(String[] urls) throws IOException {
-        // Obtener configuraciÃ³n de directorios desde .env
+        // Obtener configuracion de directorios desde .env
         String downloadDir = EnvConfig.getDownloadDir();
         String atomDir = EnvConfig.getAtomDir();
         String excelDir = EnvConfig.getExcelDir();
@@ -82,7 +82,7 @@ public class PlacspWorkflow {
         
         long startTime = System.currentTimeMillis();
         
-        // Iniciar sesiÃ³n de logging
+        // Iniciar sesion de logging
         PlacspLogger.startSession();
         PlacspLogger.info("URLs a procesar: " + urls.length);
         
@@ -105,7 +105,7 @@ public class PlacspWorkflow {
         System.out.println("\n[FASE 1] Descargando archivos ZIP...");
         descargarArchivos(urls, downloadDir, numZipsDescargar);
         
-        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresiÃ³n automÃ¡ticamente)
+        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresion automÃ¡ticamente)
         System.out.println("\n[FASE 2] Convirtiendo archivos ZIP a Excel...");
         converter.convertirTodosZipAExcel(downloadDir, excelDir, atomDir, mesesHistorico);
         
@@ -120,7 +120,7 @@ public class PlacspWorkflow {
         long endTime = System.currentTimeMillis();
         long duration = (endTime - startTime) / 1000;
         
-        // Finalizar sesiÃ³n de logging
+        // Finalizar sesion de logging
         PlacspLogger.endSession(duration);
         PlacspLogger.close();
         
@@ -215,7 +215,7 @@ public class PlacspWorkflow {
                 System.err.println("  [ERROR] No se pudo obtener el siteId");
                 return;
             }
-            // Mostrar todos los drives para depuraciÃ³n
+            // Mostrar todos los drives para depuracion
             GraphHelper.listDrives(siteId, token);
             
             // Buscar el driveId usando nombres configurados o estrategias de fallback
@@ -233,7 +233,7 @@ public class PlacspWorkflow {
                     }
                 }
             } else {
-                // Usar nombres por defecto si no hay configuraciÃ³n
+                // Usar nombres por defecto si no hay configuracion
                 // 1. Intentar 'Documentos compartidos' (espaÃ±ol)
                 driveId = GraphHelper.getDriveIdByDisplayName(siteId, token, "Documentos compartidos");
                 if (driveId != null) {
@@ -295,7 +295,7 @@ public class PlacspWorkflow {
                     } else {
                         destino = file.getName();
                     }
-                    // Imprimir la ruta destino en consola para depuraciÃ³n de codificaciÃ³n
+                    // Imprimir la ruta destino en consola para depuracion de codificacion
                     System.out.println("    [DEBUG] Ruta destino (UTF-8): " + destino);
                     if (uploader.uploadFile(file.getAbsolutePath(), destino)) {
                         System.out.println("    [OK] Subido: " + file.getName());
@@ -345,7 +345,7 @@ public class PlacspWorkflow {
      * @throws IOException si hay error en las operaciones
      */
     public static void main(String[] args) throws IOException {
-        // Obtener URLs desde configuraciÃ³n .env
+        // Obtener URLs desde configuracion .env
         String[] urls = EnvConfig.getUrls();
 
         PlacspWorkflow workflow = new PlacspWorkflow();

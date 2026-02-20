@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 # Función para ejecutar el proceso
@@ -50,7 +50,7 @@ run_cron() {
     echo "Cron configurado. Iniciando servicio..."
     
     # Iniciar cron y seguir logs
-    cron && tail -f /var/log/cron.log
+    crond && tail -f /var/log/cron.log
 }
 
 # Punto de entrada
