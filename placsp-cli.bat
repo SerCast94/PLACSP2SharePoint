@@ -11,5 +11,9 @@ if defined JAVA_HOME (
     set "JAVA_CMD=java"
 )
 
-"%JAVA_CMD%" -cp "%DIR%target\classes;%DIR%lib\*" es.age.dgpe.placsp.risp.parser.cli.AtomToExcelCLI %*
+if defined JAVA_OPTS (
+    "%JAVA_CMD%" %JAVA_OPTS% -cp "%DIR%target\classes;%DIR%lib\*" es.age.dgpe.placsp.risp.parser.cli.AtomToExcelCLI %*
+) else (
+    "%JAVA_CMD%" -cp "%DIR%target\classes;%DIR%lib\*" es.age.dgpe.placsp.risp.parser.cli.AtomToExcelCLI %*
+)
 endlocal

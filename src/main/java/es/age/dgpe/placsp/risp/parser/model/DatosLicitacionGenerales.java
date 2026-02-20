@@ -33,7 +33,7 @@ import ext.place.codice.common.caclib.ContractFolderStatusType;
 import ext.place.codice.common.caclib.NoticeInfoType;
  
 public enum DatosLicitacionGenerales{
-	PRIMERA_PUBLICACION("Primera publicación", EnumFormatos.FECHA_CORTA) {
+	PRIMERA_PUBLICACION("Primera publicaci\u00f3n", EnumFormatos.FECHA_CORTA) {
 	@Override
 		public GregorianCalendar valorCodice(ContractFolderStatusType contractFolder) {
 			GregorianCalendar primeraPublicacion = null;
@@ -79,7 +79,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	NUMERO_EXPEDIENTE ("Número de expediente"){
+	NUMERO_EXPEDIENTE ("N\u00famero de expediente"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder){
 			try {
@@ -101,7 +101,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	ID_TED ("Identificador único TED"){
+	ID_TED ("Identificador \u00fanico TED"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder){
 			try {
@@ -184,7 +184,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	LUGAR_EJECUCION ("Lugar de ejecución"){
+	LUGAR_EJECUCION ("Lugar de ejecuci\u00f3n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			String codigo = "";
@@ -218,7 +218,7 @@ public enum DatosLicitacionGenerales{
 			return codigo + " - " + descripcion;
 		}
 	},
-	ORGANO_CONTRATACION ("Órgano de Contratación"){
+	ORGANO_CONTRATACION ("\u00d3rgano de Contrataci\u00f3n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -291,7 +291,7 @@ public enum DatosLicitacionGenerales{
 			}			
 		}
 	},
-	TIPO_ADMINISTRACION ("Tipo de Administración"){
+	TIPO_ADMINISTRACION ("Tipo de Administraci\u00f3n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {				
@@ -301,7 +301,7 @@ public enum DatosLicitacionGenerales{
 			}			
 		}
 	},
-	CODIGO_POSTAL ("Código Postal"){
+	CODIGO_POSTAL ("C\u00f3digo Postal"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {			
@@ -321,7 +321,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SISTEMA_CONTRATACION ("Sistema de contratación"){
+	SISTEMA_CONTRATACION ("Sistema de contrataci\u00f3n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -331,7 +331,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	TRAMITACION ("Tramitación"){
+	TRAMITACION ("Tramitaci\u00f3n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -341,7 +341,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	PRESENTACION_OFERTA ("Forma de presentación de la oferta"){
+	PRESENTACION_OFERTA ("Forma de presentaci\u00f3n de la oferta"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -351,7 +351,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FECHA_PRESENTACION_OFERTAS ("Fecha de presentación de ofertas",  EnumFormatos.FECHA_LARGA){
+	FECHA_PRESENTACION_OFERTAS ("Fecha de presentaci\u00f3n de ofertas",  EnumFormatos.FECHA_LARGA){
 		@Override
 		public GregorianCalendar valorCodice(ContractFolderStatusType contractFolder) {
 			GregorianCalendar fechaFinal = new GregorianCalendar();
@@ -372,7 +372,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FECHA_PRESENTACION_SOLICITUDES ("Fecha de presentación de solicitudes de participacion",  EnumFormatos.FECHA_LARGA){
+	FECHA_PRESENTACION_SOLICITUDES ("Fecha de presentaci\u00f3n de solicitudes de participaci\u00f3n",  EnumFormatos.FECHA_LARGA){
 		@Override
 		public GregorianCalendar valorCodice(ContractFolderStatusType contractFolder) {
 			GregorianCalendar fechaFinal = new GregorianCalendar();
@@ -394,7 +394,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	ES_REG_SARA ("Directiva de aplicación"){
+	ES_REG_SARA ("Directiva de aplicaci\u00f3n"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -420,7 +420,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FINANCIACION_EUROPEA ("Financiación Europea y fuente"){
+	FINANCIACION_EUROPEA ("Financiaci\u00f3n Europea y fuente"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -451,7 +451,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	FINANCIACION_EUROPEA_DESCRIPCION("Descripción de la financiación europea"){
+	FINANCIACION_EUROPEA_DESCRIPCION("Descripci\u00f3n de la financiaci\u00f3n europea"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -461,7 +461,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SUBASTA_ELECTRONICA ("Subasta electrónica"){
+	SUBASTA_ELECTRONICA ("Subasta electr\u00f3nica"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -475,7 +475,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SUBCONTRACION_PERMITIDA_DESC ("Subcontratación permitida"){
+	SUBCONTRACION_PERMITIDA_DESC ("Subcontrataci\u00f3n permitida"){
 		@Override
 		public String valorCodice(ContractFolderStatusType contractFolder) {
 			try {
@@ -485,7 +485,7 @@ public enum DatosLicitacionGenerales{
 			}
 		}
 	},
-	SUBCONTRACION_PERMITIDA_RATE ("Subcontratación permitida porcentaje"){
+	SUBCONTRACION_PERMITIDA_RATE ("Subcontrataci\u00f3n permitida porcentaje"){
 		@Override
 		public BigDecimal valorCodice(ContractFolderStatusType contractFolder) {
 			try {
