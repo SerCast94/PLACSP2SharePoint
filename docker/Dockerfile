@@ -54,6 +54,8 @@ COPY .env.example ./.env.example
 COPY placsp-cli.sh /app/placsp-cli.sh
 RUN chmod +x /app/placsp-cli.sh
 
+
+
 # Copiar script de entrada correctamente
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
