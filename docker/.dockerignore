@@ -1,11 +1,8 @@
 # Directorios de salida
-descargas/*
-logs/*
 target/*
 cli-build/*
 
 # Archivos temporales
-*.log
 *.tmp
 
 # JDK embebido (no necesario en Docker)

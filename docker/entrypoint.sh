@@ -1,56 +1,57 @@
-#!/bin/bash
+#!/bin/sh
 set -e
+
+# Añadir /app al PATH para que placsp-cli.sh siempre sea encontrado
+export PATH="/app:$PATH"
 
 # Función para ejecutar el proceso
 run_workflow() {
     echo "=========================================="
     echo "Iniciando proceso PLACSP - $(date)"
     echo "=========================================="
-    
     # Verificar que existe el archivo .env
     if [ ! -f /app/.env ]; then
         echo "[ERROR] No existe archivo .env"
         echo "Monte un archivo .env o use variables de entorno"
         exit 1
     fi
-    
     java $JAVA_OPTS -Dfile.encoding=UTF-8 -cp "target/classes:lib/*" \
         es.age.dgpe.placsp.risp.parser.workflow.PlacspWorkflow
-    
     EXIT_CODE=$?
-    
     echo ""
     echo "=========================================="
     echo "Proceso finalizado - $(date)"
     echo "Código de salida: $EXIT_CODE"
     echo "=========================================="
-    
     return $EXIT_CODE
 }
 
 # Función para ejecutar con cron
 run_cron() {
-    # Formato cron: "0 2 * * *" = Todos los días a las 2 AM
     CRON_SCHEDULE="${CRON_SCHEDULE:-0 2 * * *}"
-    
     echo "Configurando ejecución periódica: $CRON_SCHEDULE"
-    
-    # Crear archivo crontab
-    echo "$CRON_SCHEDULE cd /app && /usr/local/bin/docker-entrypoint.sh run >> /var/log/cron.log 2>&1" > /etc/cron.d/placsp-cron
-    
-    # Dar permisos
-    chmod 0644 /etc/cron.d/placsp-cron
-    
-    # Aplicar cron
-    crontab /etc/cron.d/placsp-cron
-    
-    # Crear log
-    touch /var/log/cron.log
-    
+
+    # Eliminar cualquier archivo sobrante en /etc/cron.d/
+    rm -f /etc/cron.d/placsp-cron
+
+    # Limpiar crontab de root por completo
+    crontab -r 2>/dev/null || true
+
+    # Establecer la nueva tarea (asegurar salto de línea final)
+    (echo "$CRON_SCHEDULE cd /app && /usr/local/bin/docker-entrypoint.sh run >> /var/log/cron.log 2>&1") | crontab -
+
     echo "Cron configurado. Iniciando servicio..."
-    
-    # Iniciar cron y seguir logs
-    cron && tail -f /var/log/cron.log
+
+    # Asegurar que no hay otro crond en ejecución (por si acaso)
+    killall crond 2>/dev/null || true
+
+    # Iniciar demonio cron en background
+        touch /var/log/cron.log
+        crond
+    # Asegurar que el archivo existe
+    touch /var/log/cron.log
+    # Mostrar la salida de cron en consola (espera aunque esté vacío)
+        tail -F /var/log/cron.log
 }
 
 # Punto de entrada

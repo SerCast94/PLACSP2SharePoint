@@ -49,26 +49,33 @@ public class AtomToExcelConverter {
      */
     private List<String> buildCliArgs(String inputPath, String outputPath) {
         List<String> args = new ArrayList<>();
-        args.add("cmd.exe");
-        args.add("/c");
-        args.add(EnvConfig.getCliCommand());
-        args.add("--in");
-        args.add(inputPath);
-        args.add("--out");
-        args.add(outputPath);
-        
+        String os = System.getProperty("os.name").toLowerCase();
+
+        // Construir las opciones del CLI
+        StringBuilder options = new StringBuilder();
+        options.append("--in '").append(inputPath).append("' ");
+        options.append("--out '").append(outputPath).append("'");
+
         if (EnvConfig.isCliDosTablas()) {
-            args.add("--dos-tablas");
+            options.append(" --dos-tablas");
         }
-        // Nota: La logica aquÃ­ es invertida porque el CLI usa --sin-xxx
-        // pero en el .env usamos CLI_INCLUIR_xxx para mayor claridad
         if (!EnvConfig.isCliIncluirEmp()) {
-            args.add("--sin-emp");
+            options.append(" --sin-emp");
         }
         if (!EnvConfig.isCliIncluirCpm()) {
-            args.add("--sin-cpm");
+            options.append(" --sin-cpm");
         }
-        
+
+        if (os.contains("win")) {
+            args.add("cmd.exe");
+            args.add("/c");
+            args.add(EnvConfig.getCliCommand() + " " + options.toString().replace("'", "\""));
+        } else {
+            args.add("sh");
+            args.add("-c");
+            args.add("./" + EnvConfig.getCliCommand() + " " + options.toString());
+        }
+
         return args;
     }
 

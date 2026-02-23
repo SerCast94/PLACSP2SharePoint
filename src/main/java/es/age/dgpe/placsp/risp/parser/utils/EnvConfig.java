@@ -221,7 +221,12 @@ public class EnvConfig {
 
     // Configuracion CLI
     public static String getCliCommand() {
-        return get("CLI_COMMAND", "placsp-cli.bat");
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("win")) {
+            return get("CLI_COMMAND", "placsp-cli.bat");
+        } else {
+            return get("CLI_COMMAND", "placsp-cli.sh");
+        }
     }
 
     public static boolean isCliDosTablas() {

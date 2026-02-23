@@ -57,8 +57,8 @@ public class EnlaceAnyoMesExtractor {
     }
     
     public static void procesarCompleto(String[] urls) throws IOException {
-        String downloadDir = "descargas";
-        String excelDir = "descargas/excel";
+        String downloadDir = System.getenv().getOrDefault("DOWNLOAD_DIR", "/app/descargas");
+        String excelDir = System.getenv().getOrDefault("EXCEL_DIR", "/app/descargas/excel");
         
         long startTime = System.currentTimeMillis();
         
@@ -358,13 +358,15 @@ public class EnlaceAnyoMesExtractor {
             System.out.println("  Procesando ZIP...");
             
             // Llamar al CLI del proyecto pasando el archivo ZIP
-            ProcessBuilder pb = new ProcessBuilder(
-                "cmd.exe",
-                "/c",
-                "placsp-cli.bat",
-                "--in", zipFilePath,
-                "--out", excelFilePath
-            );
+            String os = System.getProperty("os.name").toLowerCase();
+            ProcessBuilder pb;
+            if (os.contains("win")) {
+                String cmd = "placsp-cli.bat --in \"" + zipFilePath + "\" --out \"" + excelFilePath + "\"";
+                pb = new ProcessBuilder("cmd.exe", "/c", cmd);
+            } else {
+                String cmd = "./placsp-cli.sh --in '" + zipFilePath + "' --out '" + excelFilePath + "'";
+                pb = new ProcessBuilder("sh", "-c", cmd);
+            }
             
             pb.directory(new java.io.File(System.getProperty("user.dir")));
             pb.redirectErrorStream(true);
