@@ -282,13 +282,13 @@ private static String limpiarSaltosDeLinea(String texto) {
 
             Args actualArgs = new Args(actualInPaths, parsed.outPath, parsed.dosTablas, parsed.sinEMP, parsed.sinCPM, true, 0);
             new AtomToExcelCLI().convert(actualArgs);
-            System.out.println("ConversiÃ³n completada: " + parsed.outPath);
+            System.out.println("Conversion completada: " + parsed.outPath);
         } catch (Exception e) {
-            System.err.println("Error en la conversiÃ³n: " + e.getMessage());
+            System.err.println("Error en la conversion: " + e.getMessage());
             e.printStackTrace();
             System.exit(2);
         } finally {
-            // Limpiar directorio temporal si se creÃ³
+            // Limpiar directorio temporal si se creo
             if (tempDir != null) {
                 try {
                     deleteRecursively(tempDir);
@@ -334,7 +334,7 @@ private static String limpiarSaltosDeLinea(String texto) {
             return files[0].getAbsolutePath();
         }
 
-        throw new FileNotFoundException("No se encontrÃ³ archivo .atom en el ZIP");
+        throw new FileNotFoundException("No se encontro archivo .atom en el ZIP");
     }
 
     private static void deleteRecursively(Path path) throws IOException {
@@ -497,6 +497,10 @@ private static String limpiarSaltosDeLinea(String texto) {
             if (idxPresentacion3 >= 0) {
                 wb.removeSheetAt(idxPresentacion3);
             }
+            int idxPresentacion4 = wb.getSheetIndex("presentaci\u00f3n");
+            if (idxPresentacion4 >= 0) {
+                wb.removeSheetAt(idxPresentacion4);
+            }
             // Eliminar hoja "Resultados" si existe
             int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
             if (idxResultados >= 0) {
@@ -531,6 +535,10 @@ private static String limpiarSaltosDeLinea(String texto) {
                 int idxPresentacionX3 = xssfWorkbook.getSheetIndex("PRESENTACION");
                 if (idxPresentacionX3 >= 0) {
                     xssfWorkbook.removeSheetAt(idxPresentacionX3);
+                }
+                int idxPresentacionX4 = xssfWorkbook.getSheetIndex("presentaci\u00f3n");
+                if (idxPresentacionX4 >= 0) {
+                    xssfWorkbook.removeSheetAt(idxPresentacionX4);
                 }
 
                 // Añadir metadatos personalizados a la hoja "Licitaciones"

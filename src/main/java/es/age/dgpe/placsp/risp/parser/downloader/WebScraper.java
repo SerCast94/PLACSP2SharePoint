@@ -15,24 +15,24 @@ import java.util.regex.Pattern;
 
 /**
  * Clase responsable de extraer enlaces de pÃ¡ginas web usando JSoup.
- * Especializada en buscar enlaces de archivos ZIP con patrÃ³n de aÃ±o-mes.
+ * Especializada en buscar enlaces de archivos ZIP con patron de aÃ±o-mes.
  * 
- * El patrÃ³n de bÃºsqueda es configurable desde el archivo .env (ZIP_LINK_PATTERN)
+ * El patron de bÃºsqueda es configurable desde el archivo .env (ZIP_LINK_PATTERN)
  */
 public class WebScraper {
 
-    // PatrÃ³n cargado desde configuraciÃ³n
+    // Patron cargado desde configuracion
     private final Pattern anyoMesPattern;
 
     /**
-     * Constructor que carga el patrÃ³n desde configuraciÃ³n.
+     * Constructor que carga el patron desde configuracion.
      */
     public WebScraper() {
         this.anyoMesPattern = EnvConfig.getZipLinkPattern();
     }
 
     /**
-     * Extrae el enlace mÃ¡s reciente que coincida con el patrÃ³n YYYYMM.zip de una pÃ¡gina web.
+     * Extrae el enlace mÃ¡s reciente que coincida con el patron YYYYMM.zip de una pÃ¡gina web.
      * Compara las fechas (YYYYMM) y devuelve el enlace con la fecha mÃ¡s alta.
      * 
      * @param url URL de la pÃ¡gina web a analizar
@@ -45,7 +45,7 @@ public class WebScraper {
     }
 
     /**
-     * Extrae los N enlaces mÃ¡s recientes que coincidan con el patrÃ³n YYYYMM.zip de una pÃ¡gina web.
+     * Extrae los N enlaces mÃ¡s recientes que coincidan con el patron YYYYMM.zip de una pÃ¡gina web.
      * Los enlaces se devuelven ordenados de mÃ¡s antiguo a mÃ¡s reciente.
      * 
      * @param url URL de la pÃ¡gina web a analizar

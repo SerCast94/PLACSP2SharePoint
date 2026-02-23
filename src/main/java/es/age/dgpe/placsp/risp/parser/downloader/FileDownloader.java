@@ -18,7 +18,7 @@ import java.nio.file.Paths;
  * ParÃ¡metros configurables desde .env:
  * - DOWNLOAD_BUFFER_SIZE: TamaÃ±o del buffer de descarga
  * - DOWNLOAD_PROGRESS_INTERVAL_MB: Intervalo para mostrar progreso
- * - HTTP_CONNECT_TIMEOUT: Timeout de conexiÃ³n
+ * - HTTP_CONNECT_TIMEOUT: Timeout de conexion
  * - HTTP_READ_TIMEOUT: Timeout de lectura
  */
 public class FileDownloader {
@@ -30,7 +30,7 @@ public class FileDownloader {
      * @param nombreArchivo Ruta local donde guardar el archivo
      */
     public void descargarArchivo(String urlStr, String nombreArchivo) {
-        // Cargar configuraciÃ³n desde .env
+        // Cargar configuracion desde .env
         int bufferSize = EnvConfig.getDownloadBufferSize();
         int progressIntervalMb = EnvConfig.getDownloadProgressIntervalMb();
         int connectTimeout = EnvConfig.getHttpConnectTimeout();

@@ -23,7 +23,7 @@ public class GraphSharePointUploader {
     /**
      * Sube un archivo a una carpeta de SharePoint usando Microsoft Graph
      * @param localFilePath Ruta local del archivo
-     * @param remotePath Ruta destino en la biblioteca (ej: "ColaboraciÃ³n/archivo.xlsx")
+     * @param remotePath Ruta destino en la biblioteca (ej: "Colaboracion/archivo.xlsx")
      * @return true si fue exitoso
      */
     public boolean uploadFile(String localFilePath, String remotePath) {
@@ -71,9 +71,9 @@ public class GraphSharePointUploader {
             }
         } catch (Exception e) {
             System.err.println("  [ERROR] Error al subir archivo por Graph: " + e.getMessage());
-            // Registrar excepciÃ³n en log
+            // Registrar excepcion en log
             PlacspLogger.upload(localFilePath, remotePath, false);
-            PlacspLogger.error("ExcepciÃ³n subiendo archivo", e);
+            PlacspLogger.error("Excepcion subiendo archivo", e);
             return false;
         }
     }

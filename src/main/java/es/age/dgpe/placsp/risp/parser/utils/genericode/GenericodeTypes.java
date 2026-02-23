@@ -33,7 +33,7 @@ public enum GenericodeTypes {
 		try {
 			codes = GenericodeManager.generateMap(GenericodeTypes.class.getResourceAsStream(nombreGenericode));
 		} catch (Exception e) {
-			System.err.println("Error cargando cÃ³digos " + nombreGenericode + ": " + e.getMessage());
+			System.err.println("Error cargando codigos " + nombreGenericode + ": " + e.getMessage());
 		}
 	}
 	

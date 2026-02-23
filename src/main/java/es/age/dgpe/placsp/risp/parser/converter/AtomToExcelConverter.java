@@ -32,12 +32,12 @@ import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
  */
 public class AtomToExcelConverter {
 
-    // Patrones cargados desde configuraciÃ³n
+    // Patrones cargados desde configuracion
     private final Pattern anyoMesPattern;
     private final Pattern fechaCompletaPattern;
 
     /**
-     * Constructor que carga configuraciÃ³n desde .env
+     * Constructor que carga configuracion desde .env
      */
     public AtomToExcelConverter() {
         this.anyoMesPattern = EnvConfig.getAnyoMesPattern();
@@ -45,7 +45,7 @@ public class AtomToExcelConverter {
     }
 
     /**
-     * Construye los argumentos del CLI segÃºn la configuraciÃ³n
+     * Construye los argumentos del CLI segÃºn la configuracion
      */
     private List<String> buildCliArgs(String inputPath, String outputPath) {
         List<String> args = new ArrayList<>();
@@ -60,7 +60,7 @@ public class AtomToExcelConverter {
         if (EnvConfig.isCliDosTablas()) {
             args.add("--dos-tablas");
         }
-        // Nota: La lÃ³gica aquÃ­ es invertida porque el CLI usa --sin-xxx
+        // Nota: La logica aquÃ­ es invertida porque el CLI usa --sin-xxx
         // pero en el .env usamos CLI_INCLUIR_xxx para mayor claridad
         if (!EnvConfig.isCliIncluirEmp()) {
             args.add("--sin-emp");
@@ -82,7 +82,7 @@ public class AtomToExcelConverter {
         try {
             System.out.println("  Procesando ZIP...");
             
-            // Construir argumentos del CLI desde configuraciÃ³n
+            // Construir argumentos del CLI desde configuracion
             List<String> args = buildCliArgs(zipFilePath, excelFilePath);
             
             ProcessBuilder pb = new ProcessBuilder(args);
@@ -129,7 +129,7 @@ public class AtomToExcelConverter {
         try {
             System.out.println("  Procesando ATOM...");
             
-            // Construir argumentos del CLI desde configuraciÃ³n
+            // Construir argumentos del CLI desde configuracion
             List<String> args = buildCliArgs(atomFilePath, excelFilePath);
             
             ProcessBuilder pb = new ProcessBuilder(args);
@@ -215,7 +215,7 @@ public class AtomToExcelConverter {
                 }
             }
             
-            // Procesar cada grupo usando nombres de Excel desde configuraciÃ³n
+            // Procesar cada grupo usando nombres de Excel desde configuracion
             if (!zipsPerfContrat.isEmpty()) {
                 System.out.println("=== Procesando " + zipsPerfContrat.size() + " ZIPs de Perfiles Contratante ===\n");
                 procesarGrupoZips(zipsPerfContrat, excelDir, atomDir, EnvConfig.getExcelNamePerfContrat(), mesesAntiguedad);
@@ -347,7 +347,7 @@ public class AtomToExcelConverter {
     
     /**
      * Elimina los archivos ATOM que tienen mÃ¡s de N meses de antigÃ¼edad.
-     * La comparaciÃ³n se hace dÃ­a a dÃ­a para una limpieza precisa.
+     * La comparacion se hace dÃ­a a dÃ­a para una limpieza precisa.
      * 
      * @param atomDir Directorio donde estÃ¡n los archivos ATOM
      * @param tipoExcel Tipo de archivo para filtrar (PerfContrat o Agregadas)
@@ -453,7 +453,7 @@ public class AtomToExcelConverter {
             
             double totalSizeMB = totalSize / (1024.0 * 1024.0);
             System.out.printf("\nTotal: %d archivos, %.2f MB%n", excelFiles.size(), totalSizeMB);
-            System.out.println("UbicaciÃ³n: " + excelDir);
+            System.out.println("Ubicacion: " + excelDir);
         } catch (IOException e) {
             System.err.println("Error al mostrar resumen: " + e.getMessage());
         }
