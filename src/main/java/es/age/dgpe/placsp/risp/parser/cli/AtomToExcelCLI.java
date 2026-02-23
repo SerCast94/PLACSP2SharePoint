@@ -1,5 +1,7 @@
 package es.age.dgpe.placsp.risp.parser.cli;
 
+import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -268,7 +270,7 @@ private static String limpiarSaltosDeLinea(String texto) {
                 if (inPath.toLowerCase().endsWith(".zip")) {
                     System.out.println("Detectado archivo ZIP, extrayendo: " + inPath);
                     String extractedAtom = extractAndFindAtom(inPath, tempDir);
-                    System.out.println("Usando archivo extraÃ­do: " + extractedAtom);
+                    System.out.println("Usando archivo extraido: " + extractedAtom);
                     actualInPaths.add(extractedAtom);
                 } else {
                     actualInPaths.add(inPath);
@@ -320,15 +322,21 @@ private static String limpiarSaltosDeLinea(String texto) {
         // Buscar el .atom con el mismo nombre base
         File[] files = tempDir.toFile().listFiles((dir, name) -> name.equalsIgnoreCase(baseName + ".atom"));
         if (files != null && files.length > 0) {
+            System.out.println("LOG unzip: " + zipPath + " -> " + tempDir + " success=true");
+            PlacspLogger.unzip(zipPath, tempDir.toString(), true);
             return files[0].getAbsolutePath();
         }
 
         // Si no se encuentra con el mismo nombre, buscar cualquier .atom
         files = tempDir.toFile().listFiles((dir, name) -> name.toLowerCase().endsWith(".atom"));
         if (files != null && files.length > 0) {
+            System.out.println("LOG unzip: " + zipPath + " -> " + tempDir + " success=true");
+            PlacspLogger.unzip(zipPath, tempDir.toString(), true);
             return files[0].getAbsolutePath();
         }
 
+        System.out.println("LOG unzip: " + zipPath + " -> " + tempDir + " success=false");
+        PlacspLogger.unzip(zipPath, tempDir.toString(), false);
         throw new FileNotFoundException("No se encontro archivo .atom en el ZIP");
     }
 
@@ -561,6 +569,7 @@ private static String limpiarSaltosDeLinea(String texto) {
             // 3. Eliminar archivo temporal
             tempFile.delete();
             
+            PlacspLogger.processExcel(args.outPath, true);
             System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " únicas");
 
         } catch (JAXBException e) {

@@ -421,6 +421,7 @@ public class AtomToExcelConverter {
         System.out.println("  Archivo destino: " + excelPath.getFileName());
         
         convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
+        PlacspLogger.processExcel(excelPath.toString(), true);
         
         // Validar el Excel generado
         try {

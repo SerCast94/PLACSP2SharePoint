@@ -14,16 +14,16 @@ import es.age.dgpe.placsp.risp.parser.exceptions.PlacspException;
 /**
  * Sistema de logging para OpenPLACSP.
  * 
- * CaracterÃ­sticas:
+ * Caracteristicas:
  * - Un unico archivo de log (placsp.log)
- * - Conserva automaticamente solo las lÃ­neas de los ultimos N dÃ­as (configurable)
+ * - Conserva automaticamente solo las lineas de los ultimos N dias (configurable)
  * - Registro de descargas, subidas y errores
  * - Formato estructurado con timestamp
  * 
  * Parametros configurables desde .env:
  * - LOG_DIR: Directorio de logs
  * - LOG_FILE: Nombre del archivo de log
- * - MAX_LOG_DAYS: DÃ­as maximos de antigÃ¼edad
+ * - MAX_LOG_DAYS: Dias maximos de antigÃ¼edad
  * 
  * Uso:
  *   PlacspLogger.info("Mensaje informativo");
@@ -103,7 +103,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Inicializa el logger y limpia lÃ­neas antiguas.
+     * Inicializa el logger y limpia lineas antiguas.
      */
     private void initializeLogger() {
         try {
@@ -129,18 +129,18 @@ public class PlacspLogger {
         // Cerrar writer anterior si existe
         closeWriter();
 
-        // Abrir en modo append con ISO-8859-1 (Latin1) para máxima compatibilidad
+        // Abrir en modo append con UTF-8 para evitar problemas de codificación
         writer = new PrintWriter(new BufferedWriter(
             new OutputStreamWriter(
                 new FileOutputStream(logPath.toFile(), true),
-                java.nio.charset.StandardCharsets.ISO_8859_1
+                java.nio.charset.StandardCharsets.UTF_8
             )
         ));
     }
 
     /**
-     * Elimina lÃ­neas del log con mas de 30 dÃ­as.
-     * Lee el archivo, filtra las lÃ­neas recientes y reescribe.
+     * Elimina lineas del log con mas de 30 dias.
+     * Lee el archivo, filtra las lineas recientes y reescribe.
      */
     private void cleanOldLines() {
         if (!Files.exists(logPath)) {
@@ -158,31 +158,30 @@ public class PlacspLogger {
             int removedCount = 0;
 
             for (String line : allLines) {
-                // Intentar extraer la fecha de la lÃ­nea [YYYY-MM-DD HH:mm:ss]
+                // Intentar extraer la fecha de la linea [YYYY-MM-DD HH:mm:ss]
                 if (line.startsWith("[") && line.length() >= 11) {
                     try {
                         String dateStr = line.substring(1, 11);
                         LocalDate lineDate = LocalDate.parse(dateStr, DATE_FORMAT);
-                        
                         if (lineDate.isBefore(cutoffDate)) {
                             removedCount++;
-                            continue; // Saltar lÃ­nea antigua
+                            continue; // Saltar linea antigua
                         }
                     } catch (Exception e) {
-                        // Si no se puede parsear la fecha, conservar la lÃ­nea
+                        // Si no se puede parsear la fecha, conservar la linea
                     }
                 }
                 recentLines.add(line);
             }
 
-            // Si se eliminaron lÃ­neas, reescribir el archivo
+            // Si se eliminaron lineas, reescribir el archivo
             if (removedCount > 0) {
                 Files.write(logPath, recentLines, StandardCharsets.UTF_8);
-                System.out.println("[Logger] Limpieza: " + removedCount + " lÃ­neas antiguas eliminadas");
+                System.out.println("[Logger] Limpieza: " + removedCount + " lineas antiguas eliminadas");
             }
 
         } catch (IOException e) {
-            System.err.println("[Logger] Error limpiando lÃ­neas antiguas: " + e.getMessage());
+            System.err.println("[Logger] Error limpiando lineas antiguas: " + e.getMessage());
         }
     }
 
@@ -202,12 +201,12 @@ public class PlacspLogger {
     private synchronized void writeLog(Level level, String message) {
         try {
             if (writer == null) {
+                System.out.println("[Logger] writer es null, abriendo log...");
                 openLog();
             }
 
             String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
             String logEntry = String.format("[%s] [%s] %s", timestamp, level.getLabel(), message);
-
             writer.println(logEntry);
             writer.flush();
 

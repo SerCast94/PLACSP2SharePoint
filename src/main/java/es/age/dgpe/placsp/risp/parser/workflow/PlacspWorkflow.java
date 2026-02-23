@@ -527,22 +527,14 @@ public class PlacspWorkflow {
     /**
      * Punto de entrada principal del programa.
      * 
-     * @param args Argumentos de línea de comandos (no utilizados)
+     * @param args Argumentos de lÃ­nea de comandos (no utilizados)
+     * @throws IOException si hay error en las operaciones
      */
-    public static void main(String[] args) {
-        try {
-            // FORZAR EXCEPCIÓN DE VALIDACIÓN PARA PROBAR LOG EN ISO-8859-1
-            throw ValidationException.invalidFileFormat("archivo.txt", "formato esperado");
-        } catch (OutOfMemoryError e) {
-            PlacspLogger.memoryError("OutOfMemoryError en el proceso principal: " + e.getMessage());
-            System.err.println("[ERROR FATAL] Memoria insuficiente: " + e.getMessage());
-            System.err.println("Considere aumentar la memoria con: java -Xmx2g ...");
-        } catch (Exception e) {
-            PlacspLogger.error("Error fatal en el proceso principal", e);
-            System.err.println("[ERROR FATAL] " + e.getMessage());
-            e.printStackTrace();
-        } finally {
-            PlacspLogger.close();
-        }
-    }
+    public static void main(String[] args) throws IOException {
+        // Obtener URLs desde configuraciÃ³n .env
+        String[] urls = EnvConfig.getUrls();
+
+        PlacspWorkflow workflow = new PlacspWorkflow();
+        workflow.ejecutar(urls);
+}
 }

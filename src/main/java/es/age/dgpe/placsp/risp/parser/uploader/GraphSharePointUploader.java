@@ -225,11 +225,8 @@ public class GraphSharePointUploader {
                 return reader.lines().reduce("", (a, b) -> a + b);
             }
         } catch (Exception e) {
-            System.err.println("  [ERROR] Error al subir archivo por Graph: " + e.getMessage());
-            // Registrar excepcion en log
-            PlacspLogger.upload(localFilePath, remotePath, false);
-            PlacspLogger.error("Excepcion subiendo archivo", e);
-            return false;
+            System.err.println("  [ERROR] Error leyendo errorStream: " + e.getMessage());
+            return "Error leyendo errorStream: " + e.getMessage();
         }
     }
 }
