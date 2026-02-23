@@ -62,4 +62,3 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Comando por defecto
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["run"]

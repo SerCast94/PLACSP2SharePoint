@@ -16,7 +16,7 @@ services:
     
     environment:
       - TZ=Europe/Madrid
-      - CRON_SCHEDULE=42 8 * * *  # Todos los días a las 8:42
+      - CRON_SCHEDULE=39 10 * * *  # Todos los días a las 10:39
       - JAVA_OPTS=-Xmx8g  # Recomendado para procesar grandes volúmenes de datos
       # Las demás variables se leen del archivo .env montado
     
@@ -41,7 +41,7 @@ services:
       resources:
         limits:
           cpus: '2'
-          memory: 4G
+          memory: 8G
         reservations:
           memory: 1G
 
