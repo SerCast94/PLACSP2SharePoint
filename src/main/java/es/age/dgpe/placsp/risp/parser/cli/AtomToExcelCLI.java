@@ -38,7 +38,6 @@ import org.w3._2005.atom.FeedType;
 import org.w3._2005.atom.LinkType;
 
 import com.ibm.icu.text.Normalizer2;
-import com.ibm.icu.text.Transliterator;
 
 import es.age.dgpe.placsp.risp.parser.model.DatosCPM;
 import es.age.dgpe.placsp.risp.parser.model.DatosEMP;
@@ -62,10 +61,6 @@ import ext.place.codice.common.caclib.PreliminaryMarketConsultationStatusType;
 public class AtomToExcelCLI {
 
     private static Unmarshaller atomUnMarshaller;
-
-    // Transliterator de ICU4J para limpieza exhaustiva de texto (thread-safe, reutilizable)
-    private static final Transliterator LATIN_ASCII = Transliterator.getInstance(
-            "Any-Latin; Latin-ASCII; [\u0080-\uFFFF] Remove");
     private static final Normalizer2 NFC_NORMALIZER = Normalizer2.getNFCInstance();
     
     // Patron precompilado para caracteres problematicos en Power BI M
@@ -359,7 +354,6 @@ private static String limpiarSaltosDeLinea(String texto) {
         int numeroFicherosProcesados = 0;
 
         FeedType res = null;
-        FileOutputStream output_file = null;
         InputStreamReader inStream = null;
 
         ArrayList<DatosLicitacionGenerales> seleccionLicitacionGenerales = new ArrayList<>(Arrays.asList(DatosLicitacionGenerales.values()));
