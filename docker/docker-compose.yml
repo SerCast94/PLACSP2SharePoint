@@ -16,7 +16,7 @@ services:
     
     environment:
       - TZ=Europe/Madrid
-      - CRON_SCHEDULE=39 10 * * *  # Todos los días a las 10:39
+      - CRON_SCHEDULE=43 9 * * *  # Prueba inmediata a las 9:30
       - JAVA_OPTS=-Xmx8g  # Recomendado para procesar grandes volúmenes de datos
       # Las demás variables se leen del archivo .env montado
     

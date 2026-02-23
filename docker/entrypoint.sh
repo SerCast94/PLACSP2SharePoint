@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Añadir /app al PATH para que placsp-cli.sh siempre sea encontrado
+export PATH="/app:$PATH"
+
 # Función para ejecutar el proceso
 run_workflow() {
     echo "=========================================="
@@ -27,12 +30,28 @@ run_workflow() {
 run_cron() {
     CRON_SCHEDULE="${CRON_SCHEDULE:-0 2 * * *}"
     echo "Configurando ejecución periódica: $CRON_SCHEDULE"
-    echo "$CRON_SCHEDULE cd /app && /usr/local/bin/docker-entrypoint.sh run >> /var/log/cron.log 2>&1" > /etc/cron.d/placsp-cron
-    chmod 0644 /etc/cron.d/placsp-cron
-    crontab /etc/cron.d/placsp-cron
-    touch /var/log/cron.log
+
+    # Eliminar cualquier archivo sobrante en /etc/cron.d/
+    rm -f /etc/cron.d/placsp-cron
+
+    # Limpiar crontab de root por completo
+    crontab -r 2>/dev/null || true
+
+    # Establecer la nueva tarea (asegurar salto de línea final)
+    (echo "$CRON_SCHEDULE cd /app && /usr/local/bin/docker-entrypoint.sh run >> /var/log/cron.log 2>&1") | crontab -
+
     echo "Cron configurado. Iniciando servicio..."
-    crond && tail -f /var/log/cron.log
+
+    # Asegurar que no hay otro crond en ejecución (por si acaso)
+    killall crond 2>/dev/null || true
+
+    # Iniciar demonio cron en background
+        touch /var/log/cron.log
+        crond
+    # Asegurar que el archivo existe
+    touch /var/log/cron.log
+    # Mostrar la salida de cron en consola (espera aunque esté vacío)
+        tail -F /var/log/cron.log
 }
 
 # Punto de entrada
