@@ -15,15 +15,15 @@ import es.age.dgpe.placsp.risp.parser.exceptions.PlacspException;
  * Sistema de logging para OpenPLACSP.
  * 
  * CaracterÃ­sticas:
- * - Un Ãºnico archivo de log (placsp.log)
- * - Conserva automÃ¡ticamente solo las lÃ­neas de los Ãºltimos N dÃ­as (configurable)
+ * - Un unico archivo de log (placsp.log)
+ * - Conserva automaticamente solo las lÃ­neas de los ultimos N dÃ­as (configurable)
  * - Registro de descargas, subidas y errores
  * - Formato estructurado con timestamp
  * 
- * ParÃ¡metros configurables desde .env:
+ * Parametros configurables desde .env:
  * - LOG_DIR: Directorio de logs
  * - LOG_FILE: Nombre del archivo de log
- * - MAX_LOG_DAYS: DÃ­as mÃ¡ximos de antigÃ¼edad
+ * - MAX_LOG_DAYS: DÃ­as maximos de antigÃ¼edad
  * 
  * Uso:
  *   PlacspLogger.info("Mensaje informativo");
@@ -32,8 +32,25 @@ import es.age.dgpe.placsp.risp.parser.exceptions.PlacspException;
  *   PlacspLogger.error("Descripcion del error", excepcion);
  */
 public class PlacspLogger {
+    /**
+     * Registra la descompresión de un archivo ZIP.
+     */
+    public static void unzip(String zipFile, String outputDir, boolean success) {
+        String status = success ? "OK" : "FALLIDO";
+        String message = String.format("[%s] ZIP: %s -> %s", status, zipFile, outputDir);
+        getInstance().writeLog(Level.INFO, message);
+    }
 
-    // ConfiguraciÃ³n cargada desde EnvConfig
+    /**
+     * Registra el procesamiento de un archivo Excel.
+     */
+    public static void processExcel(String excelFile, boolean success) {
+        String status = success ? "OK" : "FALLIDO";
+        String message = String.format("[%s] Procesado Excel: %s", status, excelFile);
+        getInstance().writeLog(Level.INFO, message);
+    }
+
+    // Configuracion cargada desde EnvConfig
     private static String LOG_DIR;
     private static String LOG_FILE;
     private static int MAX_LOG_DAYS;
@@ -68,7 +85,7 @@ public class PlacspLogger {
      * Constructor privado (singleton).
      */
     private PlacspLogger() {
-        // Cargar configuraciÃ³n desde EnvConfig
+        // Cargar configuracion desde EnvConfig
         LOG_DIR = EnvConfig.getLogDir();
         LOG_FILE = EnvConfig.getLogFile();
         MAX_LOG_DAYS = EnvConfig.getMaxLogDays();
@@ -94,7 +111,7 @@ public class PlacspLogger {
             Files.createDirectories(Paths.get(LOG_DIR));
             logPath = Paths.get(LOG_DIR, LOG_FILE);
 
-            // Limpiar lÃ­neas antiguas (mÃ¡s de N dÃ­as segÃºn configuraciÃ³n)
+            // Limpiar lÃ­neas antiguas (mas de N dÃ­as segun configuracion)
             cleanOldLines();
 
             // Abrir archivo de log en modo append
@@ -122,7 +139,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Elimina lÃ­neas del log con mÃ¡s de 30 dÃ­as.
+     * Elimina lÃ­neas del log con mas de 30 dÃ­as.
      * Lee el archivo, filtra las lÃ­neas recientes y reescribe.
      */
     private void cleanOldLines() {

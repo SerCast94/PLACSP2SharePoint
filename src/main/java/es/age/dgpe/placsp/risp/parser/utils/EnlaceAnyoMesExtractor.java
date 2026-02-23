@@ -89,7 +89,7 @@ public class EnlaceAnyoMesExtractor {
             }
         }
         
-        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresiÃ³n automÃ¡ticamente)
+        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresion automaticamente)
         System.out.println("\n[FASE 2] Convirtiendo archivos ZIP a Excel...");
         convertirTodosZipAExcel(downloadDir, excelDir);
         
@@ -123,7 +123,7 @@ public class EnlaceAnyoMesExtractor {
             }
             
             int responseCode = conn.getResponseCode();
-            System.out.println("CÃ³digo de respuesta del token: " + responseCode);
+            System.out.println("Codigo de respuesta del token: " + responseCode);
             
             if (responseCode == 200) {
                 try (Scanner scanner = new Scanner(conn.getInputStream()).useDelimiter("\\A")) {
@@ -145,7 +145,7 @@ public class EnlaceAnyoMesExtractor {
                 }
             }
         } catch (Exception e) {
-            System.err.println("ExcepciÃ³n al obtener token: " + e.getMessage());
+            System.err.println("Excepcion al obtener token: " + e.getMessage());
             e.printStackTrace();
         }
         return null;
@@ -248,7 +248,7 @@ public class EnlaceAnyoMesExtractor {
             }
             
             int responseCode = conn.getResponseCode();
-            System.out.println("CÃ³digo de respuesta: " + responseCode);
+            System.out.println("Codigo de respuesta: " + responseCode);
             
             if (responseCode >= 200 && responseCode < 300) {
                 System.out.println("Archivo subido exitosamente a SharePoint: " + nombreArchivo);
@@ -256,7 +256,7 @@ public class EnlaceAnyoMesExtractor {
                 Files.delete(Paths.get(archivoLocal));
                 System.out.println("Archivo local eliminado: " + archivoLocal);
             } else {
-                System.err.println("Error al subir a SharePoint. CÃ³digo: " + responseCode);
+                System.err.println("Error al subir a SharePoint. Codigo: " + responseCode);
                 System.err.println("Respuesta: " + conn.getResponseMessage());
                 try (InputStream errorStream = conn.getErrorStream()) {
                     if (errorStream != null) {
@@ -428,7 +428,7 @@ public class EnlaceAnyoMesExtractor {
             
             double totalSizeMB = totalSize / (1024.0 * 1024.0);
             System.out.printf("\nTotal: %d archivos, %.2f MB%n", excelFiles.size(), totalSizeMB);
-            System.out.println("UbicaciÃ³n: " + excelDir);
+            System.out.println("Ubicacion: " + excelDir);
         } catch (IOException e) {
             System.err.println("Error al mostrar resumen: " + e.getMessage());
         }

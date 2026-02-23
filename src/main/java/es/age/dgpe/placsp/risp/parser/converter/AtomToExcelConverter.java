@@ -30,7 +30,7 @@ import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
  * Clase responsable de convertir archivos ZIP/ATOM a formato Excel.
  * Utiliza el CLI de PLACSP2SharePoint para realizar las conversiones.
  * 
- * ParÃ¡metros configurables desde .env:
+ * Parametros configurables desde .env:
  * - CLI_COMMAND: Comando del CLI a ejecutar
  * - CLI_DOS_TABLAS, CLI_INCLUIR_EMP, CLI_INCLUIR_CPM: Opciones del CLI
  * - ANYO_MES_PATTERN, FECHA_COMPLETA_PATTERN: Patrones de fechas
@@ -38,7 +38,7 @@ import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
  */
 public class AtomToExcelConverter {
 
-    // Patrones cargados desde configuraciÃ³n
+    // Patrones cargados desde configuracion
     private final Pattern anyoMesPattern;
     private final Pattern fechaCompletaPattern;
     
@@ -49,7 +49,7 @@ public class AtomToExcelConverter {
     private static final long MIN_EXCEL_SIZE_BYTES = 1024;
 
     /**
-     * Constructor que carga configuraciÃ³n desde .env
+     * Constructor que carga configuracion desde .env
      */
     public AtomToExcelConverter() {
         this.anyoMesPattern = EnvConfig.getAnyoMesPattern();
@@ -57,7 +57,7 @@ public class AtomToExcelConverter {
     }
 
     /**
-     * Construye los argumentos del CLI segÃºn la configuraciÃ³n
+     * Construye los argumentos del CLI segun la configuracion
      */
     private List<String> buildCliArgs(String inputPath, String outputPath) {
         List<String> args = new ArrayList<>();
@@ -72,7 +72,7 @@ public class AtomToExcelConverter {
         if (EnvConfig.isCliDosTablas()) {
             args.add("--dos-tablas");
         }
-        // Nota: La lÃ³gica aquÃ­ es invertida porque el CLI usa --sin-xxx
+        // Nota: La logica aquÃ­ es invertida porque el CLI usa --sin-xxx
         // pero en el .env usamos CLI_INCLUIR_xxx para mayor claridad
         if (!EnvConfig.isCliIncluirEmp()) {
             args.add("--sin-emp");
@@ -249,13 +249,13 @@ public class AtomToExcelConverter {
 
     /**
      * Convierte todos los archivos ZIP de un directorio a Excel.
-     * Si hay mÃºltiples ZIPs del mismo tipo, los descomprime en orden (antiguo a nuevo)
+     * Si hay multiples ZIPs del mismo tipo, los descomprime en orden (antiguo a nuevo)
      * y genera UN solo Excel por tipo, usando todos los ATOMs acumulados.
      * 
      * @param zipDir Directorio con archivos ZIP
      * @param excelDir Directorio de salida para archivos Excel
      * @param atomDir Directorio donde guardar los archivos ATOM extraÃ­dos
-     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima para los archivos ATOM
+     * @param mesesAntiguedad Numero de meses de antigÃ¼edad maxima para los archivos ATOM
      * @throws ConversionException si hay error durante la conversión
      * @throws DecompressionException si hay error al descomprimir
      */
@@ -277,7 +277,7 @@ public class AtomToExcelConverter {
             List<Path> zipFiles = Files.list(dirPath)
                 .filter(path -> path.toString().toLowerCase().endsWith(".zip"))
                 .sorted((a, b) -> {
-                    // Ordenar por fecha (YYYYMM) de mÃ¡s antiguo a mÃ¡s reciente
+                    // Ordenar por fecha (YYYYMM) de mas antiguo a mas reciente
                     int fechaA = extraerFecha(a.getFileName().toString());
                     int fechaB = extraerFecha(b.getFileName().toString());
                     return Integer.compare(fechaA, fechaB);
@@ -306,7 +306,7 @@ public class AtomToExcelConverter {
                 }
             }
             
-            // Procesar cada grupo usando nombres de Excel desde configuraciÃ³n
+            // Procesar cada grupo usando nombres de Excel desde configuracion
             if (!zipsPerfContrat.isEmpty()) {
                 System.out.println("=== Procesando " + zipsPerfContrat.size() + " ZIPs de Perfiles Contratante ===\n");
                 procesarGrupoZips(zipsPerfContrat, excelDir, atomDir, EnvConfig.getExcelNamePerfContrat(), mesesAntiguedad);
@@ -330,7 +330,7 @@ public class AtomToExcelConverter {
      * Procesa un grupo de ZIPs del mismo tipo.
      * Extrae los ATOMs en orden (antiguo a nuevo) y genera UN solo Excel.
      * 
-     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima para limpiar ATOMs
+     * @param mesesAntiguedad Numero de meses de antigÃ¼edad maxima para limpiar ATOMs
      * @throws ConversionException si hay error durante la conversión
      * @throws DecompressionException si hay error al descomprimir
      */
@@ -364,7 +364,7 @@ public class AtomToExcelConverter {
             PlacspLogger.warning("Hubo " + erroresExtraccion + " errores de extracción de " + zipFiles.size() + " ZIPs");
         }
         
-        // 1.5. Limpiar ATOMs antiguos (mÃ¡s de N meses)
+        // 1.5. Limpiar ATOMs antiguos (mas de N meses)
         limpiarAtomsAntiguos(atomDir, nombreExcel, mesesAntiguedad);
         
         // 2. Obtener todos los ATOMs de la carpeta, ordenados por fecha
@@ -403,8 +403,8 @@ public class AtomToExcelConverter {
             System.out.println("    - " + atom.getFileName());
         }
         
-        // 3. Generar UN solo Excel usando el ATOM principal (el primero/mÃ¡s antiguo)
-        // Este es el archivo completo, los demÃ¡s son incrementales
+        // 3. Generar UN solo Excel usando el ATOM principal (el primero/mas antiguo)
+        // Este es el archivo completo, los demas son incrementales
         Path atomPrincipal = atomFiles.get(0);
         Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
         
@@ -430,53 +430,51 @@ public class AtomToExcelConverter {
      */
     private void validarExcelGenerado(Path excelPath) throws ValidationException {
         String fileName = excelPath.getFileName().toString();
-        
         // Verificar que existe
         if (!Files.exists(excelPath)) {
+            PlacspLogger.processExcel(fileName, false);
             throw ValidationException.emptyFile(fileName);
         }
-        
         try {
             long size = Files.size(excelPath);
-            
             // Verificar tamaño mínimo
             if (size < MIN_EXCEL_SIZE_BYTES) {
+                PlacspLogger.processExcel(fileName, false);
                 throw ValidationException.fileTooSmall(fileName, MIN_EXCEL_SIZE_BYTES);
             }
-            
             // Verificar que es un archivo ZIP válido (los xlsx son archivos ZIP)
             try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(excelPath.toFile())) {
                 // Verificar que tiene la estructura básica de un xlsx
                 if (zipFile.getEntry("[Content_Types].xml") == null) {
+                    PlacspLogger.processExcel(fileName, false);
                     throw ValidationException.excelCorrupted(fileName, 
                         new Exception("No se encontró [Content_Types].xml - archivo corrupto"));
                 }
             } catch (ZipException e) {
+                PlacspLogger.processExcel(fileName, false);
                 throw ValidationException.excelCorrupted(fileName, e);
             }
-            
             PlacspLogger.info("Validación OK: " + fileName + " (" + (size / 1024) + " KB)");
-            
+            PlacspLogger.processExcel(fileName, true);
         } catch (IOException e) {
+            PlacspLogger.processExcel(fileName, false);
             throw ValidationException.excelCorrupted(fileName, e);
         }
     }
     
     /**
      * Extrae TODOS los archivos ATOM de un ZIP y los guarda en el directorio especificado.
-     * @return NÃºmero de archivos ATOM extraÃ­dos
+     * @return Numero de archivos ATOM extraÃ­dos
      * @throws DecompressionException si hay error al descomprimir
      */
     private int extraerAtomDeZip(String zipFilePath, String atomDir) throws DecompressionException {
         int contadorExtraidos = 0;
         Path zipPath = Paths.get(zipFilePath);
         String zipFileName = zipPath.getFileName().toString();
-        
         // Verificar que el archivo ZIP existe
         if (!Files.exists(zipPath)) {
             throw new DecompressionException("ERR_ZIP_NOT_FOUND", "Archivo ZIP no encontrado: " + zipFilePath);
         }
-        
         // Verificar que no está vacío
         try {
             if (Files.size(zipPath) == 0) {
@@ -486,17 +484,13 @@ public class AtomToExcelConverter {
         } catch (IOException e) {
             throw new DecompressionException("Error al verificar tamaño del ZIP: " + zipFileName, e);
         }
-        
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFilePath))) {
             ZipEntry entry;
-            
             while ((entry = zis.getNextEntry()) != null) {
                 if (entry.getName().toLowerCase().endsWith(".atom")) {
                     // Mantener el nombre original del ATOM
                     String nombreAtom = entry.getName();
-                    
                     Path destino = Paths.get(atomDir, nombreAtom);
-                    
                     try {
                         // Copiar el contenido
                         Files.copy(zis, destino, StandardCopyOption.REPLACE_EXISTING);
@@ -515,34 +509,29 @@ public class AtomToExcelConverter {
                 }
                 zis.closeEntry();
             }
-            
             if (contadorExtraidos == 0) {
                 PlacspLogger.warning("ZIP sin archivos ATOM: " + zipFileName);
+                PlacspLogger.unzip(zipFileName, atomDir, false);
             } else {
                 System.out.println("    [OK] Extraidos " + contadorExtraidos + " archivos ATOM");
                 PlacspLogger.info("Extraídos " + contadorExtraidos + " ATOMs de: " + zipFileName);
+                PlacspLogger.unzip(zipFileName, atomDir, true);
             }
-            
         } catch (ZipException e) {
             PlacspLogger.decompressionError(zipFileName, "ZIP_CORRUPTO", e);
             throw DecompressionException.corruptedZip(zipFileName, e);
-            
         } catch (java.io.EOFException e) {
             PlacspLogger.decompressionError(zipFileName, "ZIP_INCOMPLETO", e);
             throw DecompressionException.corruptedZip(zipFileName, e);
-            
         } catch (java.io.FileNotFoundException e) {
             PlacspLogger.decompressionError(zipFileName, "ZIP_NO_ENCONTRADO", e);
             throw new DecompressionException("ERR_ZIP_NOT_FOUND", "Archivo ZIP no encontrado: " + zipFilePath, e);
-            
         } catch (DecompressionException e) {
             throw e; // Re-lanzar excepciones ya tipificadas
-            
         } catch (IOException e) {
             PlacspLogger.decompressionError(zipFileName, "ERROR_IO", e);
             throw new DecompressionException("Error al extraer archivos del ZIP: " + zipFileName, e);
         }
-        
         return contadorExtraidos;
     }
     
@@ -558,12 +547,12 @@ public class AtomToExcelConverter {
     }
     
     /**
-     * Elimina los archivos ATOM que tienen mÃ¡s de N meses de antigÃ¼edad.
-     * La comparaciÃ³n se hace dÃ­a a dÃ­a para una limpieza precisa.
+     * Elimina los archivos ATOM que tienen mas de N meses de antigÃ¼edad.
+     * La comparacion se hace dÃ­a a dÃ­a para una limpieza precisa.
      * 
-     * @param atomDir Directorio donde estÃ¡n los archivos ATOM
+     * @param atomDir Directorio donde estan los archivos ATOM
      * @param tipoExcel Tipo de archivo para filtrar (PerfContrat o Agregadas)
-     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima
+     * @param mesesAntiguedad Numero de meses de antigÃ¼edad maxima
      */
     private void limpiarAtomsAntiguos(String atomDir, String tipoExcel, int mesesAntiguedad) {
         try {
@@ -670,7 +659,7 @@ public class AtomToExcelConverter {
             
             double totalSizeMB = totalSize / (1024.0 * 1024.0);
             System.out.printf("\nTotal: %d archivos, %.2f MB%n", excelFiles.size(), totalSizeMB);
-            System.out.println("UbicaciÃ³n: " + excelDir);
+            System.out.println("Ubicacion: " + excelDir);
         } catch (IOException e) {
             System.err.println("Error al mostrar resumen: " + e.getMessage());
         }

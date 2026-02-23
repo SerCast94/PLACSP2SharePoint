@@ -23,10 +23,10 @@ import java.nio.file.Paths;
  * Clase responsable de descargar archivos desde URLs HTTP/HTTPS.
  * Maneja la descarga con indicador de progreso en consola.
  * 
- * ParÃ¡metros configurables desde .env:
+ * Parametros configurables desde .env:
  * - DOWNLOAD_BUFFER_SIZE: TamaÃ±o del buffer de descarga
  * - DOWNLOAD_PROGRESS_INTERVAL_MB: Intervalo para mostrar progreso
- * - HTTP_CONNECT_TIMEOUT: Timeout de conexiÃ³n
+ * - HTTP_CONNECT_TIMEOUT: Timeout de conexion
  * - HTTP_READ_TIMEOUT: Timeout de lectura
  */
 public class FileDownloader {
@@ -40,7 +40,7 @@ public class FileDownloader {
      * @throws NetworkException si hay error de red
      */
     public void descargarArchivo(String urlStr, String nombreArchivo) throws DownloadException, NetworkException {
-        // Cargar configuraciÃ³n desde .env
+        // Cargar configuracion desde .env
         int bufferSize = EnvConfig.getDownloadBufferSize();
         int progressIntervalMb = EnvConfig.getDownloadProgressIntervalMb();
         int connectTimeout = EnvConfig.getHttpConnectTimeout();
@@ -91,7 +91,7 @@ public class FileDownloader {
                     out.write(buffer, 0, bytesRead);
                     totalBytesRead += bytesRead;
                     
-                    // Mostrar progreso segÃºn intervalo configurado
+                    // Mostrar progreso segun intervalo configurado
                     long currentMB = totalBytesRead / (1024 * 1024);
                     if (currentMB >= lastPrintedMB + progressIntervalMb) {
                         if (conoceTamano) {

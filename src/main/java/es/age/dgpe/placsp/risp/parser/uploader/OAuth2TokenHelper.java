@@ -31,7 +31,7 @@ public class OAuth2TokenHelper {
         
         HttpURLConnection conn = null;
         try {
-            // Usar el scope de Microsoft Graph para obtener un token vÃ¡lido para Graph API
+            // Usar el scope de Microsoft Graph para obtener un token valido para Graph API
             String data = "client_id=" + URLEncoder.encode(clientId, "UTF-8") +
                 "&scope=" + URLEncoder.encode("https://graph.microsoft.com/.default", "UTF-8") +
                 "&client_secret=" + URLEncoder.encode(clientSecret, "UTF-8") +
