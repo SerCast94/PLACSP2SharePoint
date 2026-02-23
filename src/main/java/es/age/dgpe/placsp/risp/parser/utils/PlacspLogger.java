@@ -9,19 +9,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import es.age.dgpe.placsp.risp.parser.exceptions.PlacspException;
+
 /**
  * Sistema de logging para OpenPLACSP.
  * 
  * CaracterÃ­sticas:
- * - Un Ãºnico archivo de log (placsp.log)
- * - Conserva automÃ¡ticamente solo las lÃ­neas de los Ãºltimos N dÃ­as (configurable)
+ * - Un unico archivo de log (placsp.log)
+ * - Conserva automaticamente solo las lÃ­neas de los ultimos N dÃ­as (configurable)
  * - Registro de descargas, subidas y errores
  * - Formato estructurado con timestamp
  * 
- * ParÃ¡metros configurables desde .env:
+ * Parametros configurables desde .env:
  * - LOG_DIR: Directorio de logs
  * - LOG_FILE: Nombre del archivo de log
- * - MAX_LOG_DAYS: DÃ­as mÃ¡ximos de antigÃ¼edad
+ * - MAX_LOG_DAYS: DÃ­as maximos de antigÃ¼edad
  * 
  * Uso:
  *   PlacspLogger.info("Mensaje informativo");
@@ -30,6 +32,23 @@ import java.util.List;
  *   PlacspLogger.error("Descripcion del error", excepcion);
  */
 public class PlacspLogger {
+    /**
+     * Registra la descompresión de un archivo ZIP.
+     */
+    public static void unzip(String zipFile, String outputDir, boolean success) {
+        String status = success ? "OK" : "FALLIDO";
+        String message = String.format("[%s] ZIP: %s -> %s", status, zipFile, outputDir);
+        getInstance().writeLog(Level.INFO, message);
+    }
+
+    /**
+     * Registra el procesamiento de un archivo Excel.
+     */
+    public static void processExcel(String excelFile, boolean success) {
+        String status = success ? "OK" : "FALLIDO";
+        String message = String.format("[%s] Procesado Excel: %s", status, excelFile);
+        getInstance().writeLog(Level.INFO, message);
+    }
 
     // Configuracion cargada desde EnvConfig
     private static String LOG_DIR;
@@ -92,7 +111,7 @@ public class PlacspLogger {
             Files.createDirectories(Paths.get(LOG_DIR));
             logPath = Paths.get(LOG_DIR, LOG_FILE);
 
-            // Limpiar lÃ­neas antiguas (mÃ¡s de N dÃ­as segÃºn configuracion)
+            // Limpiar lÃineas antiguas (mas de N di­as segun configuracion)
             cleanOldLines();
 
             // Abrir archivo de log en modo append
@@ -110,17 +129,17 @@ public class PlacspLogger {
         // Cerrar writer anterior si existe
         closeWriter();
 
-        // Abrir en modo append con UTF-8
+        // Abrir en modo append con ISO-8859-1 (Latin1) para máxima compatibilidad
         writer = new PrintWriter(new BufferedWriter(
             new OutputStreamWriter(
                 new FileOutputStream(logPath.toFile(), true),
-                StandardCharsets.UTF_8
+                java.nio.charset.StandardCharsets.ISO_8859_1
             )
         ));
     }
 
     /**
-     * Elimina lÃ­neas del log con mÃ¡s de 30 dÃ­as.
+     * Elimina lÃ­neas del log con mas de 30 dÃ­as.
      * Lee el archivo, filtra las lÃ­neas recientes y reescribe.
      */
     private void cleanOldLines() {
@@ -214,7 +233,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra una descarga con tamaÃ±o en MB.
+     * Registra una descarga con tamano en MB.
      */
     public static void download(String fileName, String url, double sizeMB, boolean success) {
         String status = success ? "OK" : "FALLIDO";
@@ -231,7 +250,7 @@ public class PlacspLogger {
     }
 
     /**
-     * Registra una subida con tamaÃ±o en MB.
+     * Registra una subida con tamano en MB.
      */
     public static void upload(String fileName, String destination, double sizeMB, boolean success) {
         String status = success ? "OK" : "FALLIDO";
@@ -253,8 +272,50 @@ public class PlacspLogger {
     public static void error(String message, Throwable throwable) {
         String fullMessage = message;
         if (throwable != null) {
+            // Usar solo ASCII: 'Excepcion' sin tilde para máxima compatibilidad
             fullMessage += " | Excepcion: " + throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
+            
+            // Incluir stack trace resumido (primeras 3 líneas relevantes)
+            StackTraceElement[] stackTrace = throwable.getStackTrace();
+            if (stackTrace.length > 0) {
+                StringBuilder sb = new StringBuilder();
+                int count = 0;
+                for (StackTraceElement element : stackTrace) {
+                    if (element.getClassName().startsWith("es.age.dgpe.placsp")) {
+                        if (count > 0) sb.append(" <- ");
+                        sb.append(element.getClassName().substring(element.getClassName().lastIndexOf('.') + 1))
+                          .append(".")
+                          .append(element.getMethodName())
+                          .append(":")
+                          .append(element.getLineNumber());
+                        count++;
+                        if (count >= 3) break;
+                    }
+                }
+                if (sb.length() > 0) {
+                    fullMessage += " | Traza: " + sb.toString();
+                }
+            }
         }
+        getInstance().writeLog(Level.ERROR, fullMessage);
+    }
+
+    /**
+     * Registra una PlacspException con toda su información categorizada.
+     */
+    public static void error(PlacspException exception) {
+        String message = exception.getFormattedMessage();
+        if (exception.getCause() != null) {
+            message += " | Causa: " + exception.getCause().getClass().getSimpleName() + ": " + exception.getCause().getMessage();
+        }
+        getInstance().writeLog(Level.ERROR, message);
+    }
+
+    /**
+     * Registra un error con código específico y detalles contextuales.
+     */
+    public static void error(String errorCode, String message, String context) {
+        String fullMessage = String.format("[%s] %s | Contexto: %s", errorCode, message, context);
         getInstance().writeLog(Level.ERROR, fullMessage);
     }
 
@@ -263,6 +324,13 @@ public class PlacspLogger {
      */
     public static void warning(String message) {
         getInstance().writeLog(Level.WARNING, message);
+    }
+
+    /**
+     * Alias para warning - registra un aviso.
+     */
+    public static void warn(String message) {
+        warning(message);
     }
 
     /**
@@ -286,6 +354,145 @@ public class PlacspLogger {
     public static void endSession(long durationSeconds) {
         getInstance().writeLog(Level.INFO, 
             String.format("========== FIN DE SESION (Duracion: %d segundos) ==========", durationSeconds));
+    }
+
+    /**
+     * Registra un error de red.
+     */
+    public static void networkError(String url, String errorType, Throwable cause) {
+        String message = String.format("[%s] URL: %s", errorType, url);
+        if (cause != null) {
+            message += " | " + cause.getClass().getSimpleName() + ": " + cause.getMessage();
+        }
+        getInstance().writeLog(Level.ERROR, "[RED] " + message);
+    }
+
+    /**
+     * Registra un error de red (sobrecarga simple).
+     */
+    public static void networkError(String message) {
+        getInstance().writeLog(Level.ERROR, "[RED] " + message);
+    }
+
+    /**
+     * Registra un error de conversión.
+     */
+    public static void conversionError(String inputFile, String outputFile, String errorType, Throwable cause) {
+        String message = String.format("[%s] Input: %s | Output: %s", errorType, inputFile, outputFile);
+        if (cause != null) {
+            message += " | " + cause.getClass().getSimpleName() + ": " + cause.getMessage();
+        }
+        getInstance().writeLog(Level.ERROR, "[CONVERSION] " + message);
+    }
+
+    /**
+     * Registra un error de SharePoint.
+     */
+    public static void sharePointError(String operation, String resource, String errorMsg) {
+        String message = String.format("[%s] Recurso: %s | Error: %s", operation, resource, errorMsg);
+        getInstance().writeLog(Level.ERROR, "[SHAREPOINT] " + message);
+    }
+    /**
+     * Registra un error de SharePoint (sobrecarga simple).
+     */
+    public static void sharePointError(String message) {
+        getInstance().writeLog(Level.ERROR, "[SHAREPOINT] " + message);
+    }
+    /**
+     * Registra un error de SharePoint con código HTTP.
+     */
+    public static void sharePointError(String operation, String resource, int httpCode, String errorMsg) {
+        String message = String.format("[HTTP %d] [%s] Recurso: %s | Error: %s", httpCode, operation, resource, errorMsg);
+        getInstance().writeLog(Level.ERROR, "[SHAREPOINT] " + message);
+    }
+
+    /**
+     * Registra un error de descompresión.
+     */
+    public static void decompressionError(String zipFile, String errorType, Throwable cause) {
+        String message = String.format("[%s] Archivo: %s", errorType, zipFile);
+        if (cause != null) {
+            message += " | " + cause.getClass().getSimpleName() + ": " + cause.getMessage();
+        }
+        getInstance().writeLog(Level.ERROR, "[DESCOMPRESION] " + message);
+    }
+
+    /**
+     * Registra un error de validación.
+     */
+    public static void validationError(String fileName, String validationType, String details) {
+        String message = String.format("[%s] Archivo: %s | Detalles: %s", validationType, fileName, details);
+        getInstance().writeLog(Level.ERROR, "[VALIDACION] " + message);
+    }
+
+    /**
+     * Registra un error de validación (sobrecarga simple).
+     */
+    public static void validationError(String message) {
+        getInstance().writeLog(Level.ERROR, "[VALIDACION] " + message);
+    }
+
+    /**
+     * Registra un error de memoria.
+     */
+    public static void memoryError(String operation, long usedMB, long maxMB, Throwable cause) {
+        String message = String.format("[%s] Memoria: %dMB usado / %dMB max", operation, usedMB, maxMB);
+        if (cause != null) {
+            message += " | " + cause.getMessage();
+        }
+        getInstance().writeLog(Level.ERROR, "[MEMORIA] " + message);
+    }
+
+    /**
+     * Registra un error de memoria (sobrecarga simple).
+     */
+    public static void memoryError(String message) {
+        getInstance().writeLog(Level.ERROR, "[MEMORIA] " + message);
+    }
+
+    /**
+     * Registra un error del sistema de archivos.
+     */
+    public static void fileSystemError(String operation, String path, Throwable cause) {
+        String message = String.format("[%s] Ruta: %s", operation, path);
+        if (cause != null) {
+            message += " | " + cause.getClass().getSimpleName() + ": " + cause.getMessage();
+        }
+        getInstance().writeLog(Level.ERROR, "[FILESYSTEM] " + message);
+    }
+
+    /**
+     * Registra un error del sistema de archivos (sobrecarga simple).
+     */
+    public static void fileSystemError(String message) {
+        getInstance().writeLog(Level.ERROR, "[FILESYSTEM] " + message);
+    }
+
+    /**
+     * Registra un error de configuración.
+     */
+    public static void configError(String property, String details) {
+        String message = String.format("Propiedad: %s | %s", property, details);
+        getInstance().writeLog(Level.ERROR, "[CONFIGURACION] " + message);
+    }
+
+    /**
+     * Registra un error de configuración (sobrecarga simple).
+     */
+    public static void configError(String message) {
+        getInstance().writeLog(Level.ERROR, "[CONFIGURACION] " + message);
+    }
+
+    /**
+     * Obtiene estadísticas de memoria actuales en formato legible.
+     */
+    public static String getMemoryStats() {
+        Runtime runtime = Runtime.getRuntime();
+        long maxMB = runtime.maxMemory() / (1024 * 1024);
+        long totalMB = runtime.totalMemory() / (1024 * 1024);
+        long freeMB = runtime.freeMemory() / (1024 * 1024);
+        long usedMB = totalMB - freeMB;
+        return String.format("Memoria: %dMB usado, %dMB libre, %dMB max", usedMB, freeMB, maxMB);
     }
 
     /**

@@ -10,21 +10,27 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipInputStream;
 import java.io.FileInputStream;
 import java.time.LocalDate;
 
+import es.age.dgpe.placsp.risp.parser.exceptions.ConversionException;
+import es.age.dgpe.placsp.risp.parser.exceptions.DecompressionException;
+import es.age.dgpe.placsp.risp.parser.exceptions.ValidationException;
 import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
+import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
 
 /**
  * Clase responsable de convertir archivos ZIP/ATOM a formato Excel.
  * Utiliza el CLI de PLACSP2SharePoint para realizar las conversiones.
  * 
- * ParÃ¡metros configurables desde .env:
+ * Parametros configurables desde .env:
  * - CLI_COMMAND: Comando del CLI a ejecutar
  * - CLI_DOS_TABLAS, CLI_INCLUIR_EMP, CLI_INCLUIR_CPM: Opciones del CLI
  * - ANYO_MES_PATTERN, FECHA_COMPLETA_PATTERN: Patrones de fechas
@@ -35,6 +41,12 @@ public class AtomToExcelConverter {
     // Patrones cargados desde configuracion
     private final Pattern anyoMesPattern;
     private final Pattern fechaCompletaPattern;
+    
+    // Timeout para el proceso CLI (30 minutos por defecto)
+    private static final long CLI_TIMEOUT_MINUTES = 30;
+    
+    // Tamaño mínimo esperado para un Excel válido (1 KB)
+    private static final long MIN_EXCEL_SIZE_BYTES = 1024;
 
     /**
      * Constructor que carga configuracion desde .env
@@ -45,7 +57,7 @@ public class AtomToExcelConverter {
     }
 
     /**
-     * Construye los argumentos del CLI segÃºn la configuracion
+     * Construye los argumentos del CLI segun la configuracion
      */
     private List<String> buildCliArgs(String inputPath, String outputPath) {
         List<String> args = new ArrayList<>();
@@ -59,6 +71,8 @@ public class AtomToExcelConverter {
         if (EnvConfig.isCliDosTablas()) {
             options.append(" --dos-tablas");
         }
+        // Nota: La lÃ³gica aqui es invertida porque el CLI usa --sin-xxx
+        // pero en el .env usamos CLI_INCLUIR_xxx para mayor claridad
         if (!EnvConfig.isCliIncluirEmp()) {
             options.append(" --sin-emp");
         }
@@ -84,46 +98,11 @@ public class AtomToExcelConverter {
      * 
      * @param zipFilePath Ruta del archivo ZIP a convertir
      * @param excelFilePath Ruta del archivo Excel de salida
+     * @throws ConversionException si hay error durante la conversión
      */
-    public void convertirZipAExcel(String zipFilePath, String excelFilePath) {
-        try {
-            System.out.println("  Procesando ZIP...");
-            
-            // Construir argumentos del CLI desde configuracion
-            List<String> args = buildCliArgs(zipFilePath, excelFilePath);
-            
-            ProcessBuilder pb = new ProcessBuilder(args);
-            
-            pb.directory(new File(System.getProperty("user.dir")));
-            pb.redirectErrorStream(true);
-            
-            Process process = pb.start();
-            
-            // Mostrar el output del proceso (filtrado)
-            try (BufferedReader br = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    if (!line.contains("org.apache.logging") && 
-                        !line.contains("XmlConfiguration") &&
-                        !line.contains("watching for changes") &&
-                        !line.contains("Starting configuration") &&
-                        !line.contains("Stopping configuration")) {
-                        System.out.println("    " + line);
-                    }
-                }
-            }
-            
-            int exitCode = process.waitFor();
-            
-            if (exitCode != 0) {
-                System.err.println("  [ERROR] Error al convertir ZIP");
-            }
-            
-        } catch (Exception e) {
-            System.err.println("Error al convertir archivo ZIP: " + e.getMessage());
-            e.printStackTrace();
-        }
+    public void convertirZipAExcel(String zipFilePath, String excelFilePath) throws ConversionException {
+        System.out.println("  Procesando ZIP...");
+        ejecutarConversion(zipFilePath, excelFilePath, "ZIP");
     }
 
     /**
@@ -131,26 +110,66 @@ public class AtomToExcelConverter {
      * 
      * @param atomFilePath Ruta del archivo ATOM a convertir
      * @param excelFilePath Ruta del archivo Excel de salida
+     * @throws ConversionException si hay error durante la conversión
      */
-    public void convertirAtomAExcel(String atomFilePath, String excelFilePath) {
+    public void convertirAtomAExcel(String atomFilePath, String excelFilePath) throws ConversionException {
+        System.out.println("  Procesando ATOM...");
+        ejecutarConversion(atomFilePath, excelFilePath, "ATOM");
+    }
+    
+    /**
+     * Ejecuta la conversión de un archivo de entrada a Excel.
+     * Maneja errores de proceso, timeout, memoria y validación del resultado.
+     */
+    private void ejecutarConversion(String inputPath, String outputPath, String tipo) throws ConversionException {
+        Path inputFile = Paths.get(inputPath);
+        Path outputFile = Paths.get(outputPath);
+        
+        // Validar que el archivo de entrada existe
+        if (!Files.exists(inputFile)) {
+            PlacspLogger.conversionError(inputPath, outputPath, "ARCHIVO_NO_ENCONTRADO", null);
+            throw new ConversionException("ERR_INPUT_NOT_FOUND", "Archivo de entrada no encontrado: " + inputPath);
+        }
+        
+        // Validar que el archivo de entrada no está vacío
         try {
-            System.out.println("  Procesando ATOM...");
-            
-            // Construir argumentos del CLI desde configuracion
-            List<String> args = buildCliArgs(atomFilePath, excelFilePath);
+            if (Files.size(inputFile) == 0) {
+                PlacspLogger.conversionError(inputPath, outputPath, "ARCHIVO_VACIO", null);
+                throw ConversionException.emptyAtomFile(inputPath);
+            }
+        } catch (IOException e) {
+            PlacspLogger.conversionError(inputPath, outputPath, "ERROR_LECTURA", e);
+            throw new ConversionException("Error al leer archivo de entrada: " + inputPath, e);
+        }
+        
+        Process process = null;
+        StringBuilder errorOutput = new StringBuilder();
+        
+        try {
+            // Construir argumentos del CLI desde configuración
+            List<String> args = buildCliArgs(inputPath, outputPath);
             
             ProcessBuilder pb = new ProcessBuilder(args);
-            
             pb.directory(new File(System.getProperty("user.dir")));
             pb.redirectErrorStream(true);
             
-            Process process = pb.start();
+            // Registrar memoria antes de la conversión
+            PlacspLogger.info("Iniciando conversión " + tipo + ": " + inputPath + " | " + PlacspLogger.getMemoryStats());
             
-            // Mostrar el output del proceso (filtrado)
-            try (BufferedReader br = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
+            process = pb.start();
+            
+            // Leer output del proceso (filtrado)
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = br.readLine()) != null) {
+                    // Capturar errores
+                    if (line.toLowerCase().contains("error") || 
+                        line.toLowerCase().contains("exception") ||
+                        line.toLowerCase().contains("outofmemory")) {
+                        errorOutput.append(line).append("\n");
+                    }
+                    
+                    // Mostrar líneas relevantes
                     if (!line.contains("org.apache.logging") && 
                         !line.contains("XmlConfiguration") &&
                         !line.contains("watching for changes") &&
@@ -161,41 +180,113 @@ public class AtomToExcelConverter {
                 }
             }
             
-            int exitCode = process.waitFor();
+            // Esperar con timeout
+            boolean completed = process.waitFor(CLI_TIMEOUT_MINUTES, TimeUnit.MINUTES);
             
-            if (exitCode != 0) {
-                System.err.println("  [ERROR] Error al convertir ATOM");
+            if (!completed) {
+                process.destroyForcibly();
+                PlacspLogger.conversionError(inputPath, outputPath, "TIMEOUT", null);
+                throw ConversionException.cliTimeout();
             }
             
+            int exitCode = process.exitValue();
+            
+            if (exitCode != 0) {
+                String errorMsg = errorOutput.length() > 0 ? errorOutput.toString() : "Código de salida: " + exitCode;
+                PlacspLogger.conversionError(inputPath, outputPath, "CLI_ERROR_" + exitCode, null);
+                
+                // Detectar tipos específicos de error
+                if (errorMsg.contains("OutOfMemoryError") || errorMsg.contains("heap space")) {
+                    Runtime rt = Runtime.getRuntime();
+                    long usedMB = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
+                    long maxMB = rt.maxMemory() / (1024 * 1024);
+                    PlacspLogger.memoryError("CONVERSION_" + tipo, usedMB, maxMB, null);
+                    throw new ConversionException("ERR_MEMORY", 
+                        "Error de memoria durante la conversión. Considere aumentar -Xmx. " + 
+                        "Memoria usada: " + usedMB + "MB / " + maxMB + "MB");
+                }
+                
+                throw ConversionException.cliProcessError(exitCode);
+            }
+            
+            // Validar que se generó el archivo Excel
+            if (!Files.exists(outputFile)) {
+                PlacspLogger.conversionError(inputPath, outputPath, "EXCEL_NO_GENERADO", null);
+                throw new ConversionException("ERR_NO_OUTPUT", "No se generó el archivo Excel: " + outputPath);
+            }
+            
+            // Validar tamaño mínimo del Excel
+            long excelSize = Files.size(outputFile);
+            if (excelSize < MIN_EXCEL_SIZE_BYTES) {
+                PlacspLogger.validationError(outputPath, "EXCEL_MUY_PEQUEÑO", 
+                    "Tamaño: " + excelSize + " bytes (mínimo: " + MIN_EXCEL_SIZE_BYTES + ")");
+                throw ConversionException.excelCorrupted(outputPath);
+            }
+            
+            PlacspLogger.info("Conversión completada: " + outputPath + " (" + (excelSize / 1024) + " KB)");
+            
+        } catch (OutOfMemoryError e) {
+            Runtime rt = Runtime.getRuntime();
+            long usedMB = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
+            long maxMB = rt.maxMemory() / (1024 * 1024);
+            PlacspLogger.memoryError("CONVERSION_" + tipo, usedMB, maxMB, e);
+            throw new ConversionException("ERR_OUT_OF_MEMORY", 
+                "Memoria insuficiente durante la conversión de " + tipo + ". Memoria: " + usedMB + "MB/" + maxMB + "MB", e);
+                
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            PlacspLogger.conversionError(inputPath, outputPath, "INTERRUMPIDO", e);
+            throw new ConversionException("Conversión interrumpida", e);
+            
+        } catch (IOException e) {
+            PlacspLogger.conversionError(inputPath, outputPath, "ERROR_IO", e);
+            throw new ConversionException("Error de E/S durante la conversión: " + e.getMessage(), e);
+            
+        } catch (ConversionException e) {
+            throw e; // Re-lanzar excepciones ya tipificadas
+            
         } catch (Exception e) {
-            System.err.println("Error al convertir archivo ATOM: " + e.getMessage());
-            e.printStackTrace();
+            PlacspLogger.conversionError(inputPath, outputPath, "ERROR_INESPERADO", e);
+            throw new ConversionException("Error inesperado durante la conversión", e);
+            
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
         }
     }
 
     /**
      * Convierte todos los archivos ZIP de un directorio a Excel.
-     * Si hay mÃºltiples ZIPs del mismo tipo, los descomprime en orden (antiguo a nuevo)
+     * Si hay multiples ZIPs del mismo tipo, los descomprime en orden (antiguo a nuevo)
      * y genera UN solo Excel por tipo, usando todos los ATOMs acumulados.
      * 
      * @param zipDir Directorio con archivos ZIP
      * @param excelDir Directorio de salida para archivos Excel
-     * @param atomDir Directorio donde guardar los archivos ATOM extraÃ­dos
-     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima para los archivos ATOM
+     * @param atomDir Directorio donde guardar los archivos ATOM extraidos
+     * @param mesesAntiguedad Numero de meses de antigÃ¼edad maxima para los archivos ATOM
+     * @throws ConversionException si hay error durante la conversión
+     * @throws DecompressionException si hay error al descomprimir
      */
-    public void convertirTodosZipAExcel(String zipDir, String excelDir, String atomDir, int mesesAntiguedad) {
+    public void convertirTodosZipAExcel(String zipDir, String excelDir, String atomDir, int mesesAntiguedad) 
+            throws ConversionException, DecompressionException {
         try {
             Path dirPath = Paths.get(zipDir);
             Path atomPath = Paths.get(atomDir);
             
             // Crear directorio atom si no existe
-            Files.createDirectories(atomPath);
+            try {
+                Files.createDirectories(atomPath);
+            } catch (IOException e) {
+                PlacspLogger.fileSystemError("CREAR_DIRECTORIO", atomDir, e);
+                throw new ConversionException("Error al crear directorio de atoms: " + atomDir, e);
+            }
             
             // Obtener lista de archivos ZIP
             List<Path> zipFiles = Files.list(dirPath)
                 .filter(path -> path.toString().toLowerCase().endsWith(".zip"))
                 .sorted((a, b) -> {
-                    // Ordenar por fecha (YYYYMM) de mÃ¡s antiguo a mÃ¡s reciente
+                    // Ordenar por fecha (YYYYMM) de mas antiguo a mas reciente
                     int fechaA = extraerFecha(a.getFileName().toString());
                     int fechaB = extraerFecha(b.getFileName().toString());
                     return Integer.compare(fechaA, fechaB);
@@ -203,11 +294,13 @@ public class AtomToExcelConverter {
                 .collect(Collectors.toList());
             
             if (zipFiles.isEmpty()) {
+                PlacspLogger.warning("No se encontraron archivos ZIP en: " + zipDir);
                 System.out.println("No se encontraron archivos ZIP para convertir.");
                 return;
             }
             
             System.out.println("Se encontraron " + zipFiles.size() + " archivos ZIP para procesar\n");
+            PlacspLogger.info("Procesando " + zipFiles.size() + " archivos ZIP");
             
             // Agrupar ZIPs por tipo (licPerfContrat o licPlatafAgregadas)
             List<Path> zipsPerfContrat = new ArrayList<>();
@@ -234,9 +327,11 @@ public class AtomToExcelConverter {
             }
             
             System.out.println("\nTodos los archivos ZIP han sido procesados.");
+            PlacspLogger.info("Todos los ZIP procesados correctamente");
+            
         } catch (IOException e) {
-            System.err.println("Error al buscar archivos ZIP: " + e.getMessage());
-            e.printStackTrace();
+            PlacspLogger.fileSystemError("LISTAR_ZIPS", zipDir, e);
+            throw new ConversionException("Error al buscar archivos ZIP en: " + zipDir, e);
         }
     }
     
@@ -244,29 +339,47 @@ public class AtomToExcelConverter {
      * Procesa un grupo de ZIPs del mismo tipo.
      * Extrae los ATOMs en orden (antiguo a nuevo) y genera UN solo Excel.
      * 
-     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima para limpiar ATOMs
+     * @param mesesAntiguedad Numero de meses de antigÃ¼edad maxima para limpiar ATOMs
+     * @throws ConversionException si hay error durante la conversión
+     * @throws DecompressionException si hay error al descomprimir
      */
-    private void procesarGrupoZips(List<Path> zipFiles, String excelDir, String atomDir, String nombreExcel, int mesesAntiguedad) {
-        try {
-            int archivoActual = 0;
+    private void procesarGrupoZips(List<Path> zipFiles, String excelDir, String atomDir, String nombreExcel, int mesesAntiguedad) 
+            throws ConversionException, DecompressionException {
+        int archivoActual = 0;
+        int erroresExtraccion = 0;
+        
+        // 1. Extraer todos los ATOMs de los ZIPs a la carpeta atom
+        for (Path zipFile : zipFiles) {
+            archivoActual++;
+            String nombreArchivo = zipFile.getFileName().toString();
             
-            // 1. Extraer todos los ATOMs de los ZIPs a la carpeta atom
-            for (Path zipFile : zipFiles) {
-                archivoActual++;
-                String nombreArchivo = zipFile.getFileName().toString();
-                
-                System.out.printf("[ZIP %d/%d] Extrayendo '%s'%n", 
-                    archivoActual, zipFiles.size(), nombreArchivo);
-                
+            System.out.printf("[ZIP %d/%d] Extrayendo '%s'%n", 
+                archivoActual, zipFiles.size(), nombreArchivo);
+            
+            try {
                 // Extraer el ATOM del ZIP a la carpeta atom
-                extraerAtomDeZip(zipFile.toString(), atomDir);
+                int atomsExtraidos = extraerAtomDeZip(zipFile.toString(), atomDir);
+                if (atomsExtraidos == 0) {
+                    PlacspLogger.warning("ZIP sin archivos ATOM: " + nombreArchivo);
+                }
+            } catch (DecompressionException e) {
+                erroresExtraccion++;
+                System.err.println("  [ERROR] " + e.getMessage());
+                // Continuar con los otros ZIPs
             }
-            
-            // 1.5. Limpiar ATOMs antiguos (mÃ¡s de N meses)
-            limpiarAtomsAntiguos(atomDir, nombreExcel, mesesAntiguedad);
-            
-            // 2. Obtener todos los ATOMs de la carpeta, ordenados por fecha
-            List<Path> atomFiles = Files.list(Paths.get(atomDir))
+        }
+        
+        if (erroresExtraccion > 0) {
+            PlacspLogger.warning("Hubo " + erroresExtraccion + " errores de extracción de " + zipFiles.size() + " ZIPs");
+        }
+        
+        // 1.5. Limpiar ATOMs antiguos (mas de N meses)
+        limpiarAtomsAntiguos(atomDir, nombreExcel, mesesAntiguedad);
+        
+        // 2. Obtener todos los ATOMs de la carpeta, ordenados por fecha
+        List<Path> atomFiles;
+        try {
+            atomFiles = Files.list(Paths.get(atomDir))
                 .filter(path -> path.toString().toLowerCase().endsWith(".atom"))
                 .filter(path -> {
                     // Filtrar solo los del mismo tipo
@@ -283,60 +396,150 @@ public class AtomToExcelConverter {
                     return Integer.compare(fechaA, fechaB);
                 })
                 .collect(Collectors.toList());
-            
-            if (atomFiles.isEmpty()) {
-                System.out.println("  [INFO] No hay archivos ATOM para este tipo.");
-                return;
-            }
-            
-            System.out.println("\n  Total ATOMs acumulados: " + atomFiles.size());
-            for (Path atom : atomFiles) {
-                System.out.println("    - " + atom.getFileName());
-            }
-            
-            // 3. Generar UN solo Excel usando el ATOM principal (el primero/mÃ¡s antiguo)
-            // Este es el archivo completo, los demÃ¡s son incrementales
-            Path atomPrincipal = atomFiles.get(0);
-            Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
-            
-            System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
-            System.out.println("  Archivo destino: " + excelPath.getFileName());
-            
-            convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
-            
-            System.out.println("  [OK] Conversion completada\n");
-            
         } catch (IOException e) {
-            System.err.println("Error procesando grupo de ZIPs: " + e.getMessage());
-            e.printStackTrace();
+            PlacspLogger.fileSystemError("LISTAR_ATOMS", atomDir, e);
+            throw new ConversionException("Error al listar archivos ATOM en: " + atomDir, e);
+        }
+        
+        if (atomFiles.isEmpty()) {
+            PlacspLogger.warning("No hay archivos ATOM para tipo: " + nombreExcel);
+            System.out.println("  [INFO] No hay archivos ATOM para este tipo.");
+            return;
+        }
+        
+        System.out.println("\n  Total ATOMs acumulados: " + atomFiles.size());
+        for (Path atom : atomFiles) {
+            System.out.println("    - " + atom.getFileName());
+        }
+        
+        // 3. Generar UN solo Excel usando el ATOM principal (el primero/mas antiguo)
+        // Este es el archivo completo, los demas son incrementales
+        Path atomPrincipal = atomFiles.get(0);
+        Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
+        
+        System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
+        System.out.println("  Archivo destino: " + excelPath.getFileName());
+        
+        convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
+        
+        // Validar el Excel generado
+        try {
+            validarExcelGenerado(excelPath);
+        } catch (ValidationException e) {
+            PlacspLogger.error(e);
+            throw new ConversionException("ERR_VALIDATION", e.getMessage(), e);
+        }
+        
+        System.out.println("  [OK] Conversion completada\n");
+    }
+    
+    /**
+     * Valida que el archivo Excel generado no esté corrupto.
+     * @throws ValidationException si el archivo está corrupto o vacío
+     */
+    private void validarExcelGenerado(Path excelPath) throws ValidationException {
+        String fileName = excelPath.getFileName().toString();
+        // Verificar que existe
+        if (!Files.exists(excelPath)) {
+            PlacspLogger.processExcel(fileName, false);
+            throw ValidationException.emptyFile(fileName);
+        }
+        try {
+            long size = Files.size(excelPath);
+            // Verificar tamaño mínimo
+            if (size < MIN_EXCEL_SIZE_BYTES) {
+                PlacspLogger.processExcel(fileName, false);
+                throw ValidationException.fileTooSmall(fileName, MIN_EXCEL_SIZE_BYTES);
+            }
+            // Verificar que es un archivo ZIP válido (los xlsx son archivos ZIP)
+            try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(excelPath.toFile())) {
+                // Verificar que tiene la estructura básica de un xlsx
+                if (zipFile.getEntry("[Content_Types].xml") == null) {
+                    PlacspLogger.processExcel(fileName, false);
+                    throw ValidationException.excelCorrupted(fileName, 
+                        new Exception("No se encontró [Content_Types].xml - archivo corrupto"));
+                }
+            } catch (ZipException e) {
+                PlacspLogger.processExcel(fileName, false);
+                throw ValidationException.excelCorrupted(fileName, e);
+            }
+            PlacspLogger.info("Validación OK: " + fileName + " (" + (size / 1024) + " KB)");
+            PlacspLogger.processExcel(fileName, true);
+        } catch (IOException e) {
+            PlacspLogger.processExcel(fileName, false);
+            throw ValidationException.excelCorrupted(fileName, e);
         }
     }
     
     /**
      * Extrae TODOS los archivos ATOM de un ZIP y los guarda en el directorio especificado.
-     * @return NÃºmero de archivos ATOM extraÃ­dos
+     * @return Numero de archivos ATOM extraidos
+     * @throws DecompressionException si hay error al descomprimir
      */
-    private int extraerAtomDeZip(String zipFilePath, String atomDir) {
+    private int extraerAtomDeZip(String zipFilePath, String atomDir) throws DecompressionException {
         int contadorExtraidos = 0;
+        Path zipPath = Paths.get(zipFilePath);
+        String zipFileName = zipPath.getFileName().toString();
+        // Verificar que el archivo ZIP existe
+        if (!Files.exists(zipPath)) {
+            throw new DecompressionException("ERR_ZIP_NOT_FOUND", "Archivo ZIP no encontrado: " + zipFilePath);
+        }
+        // Verificar que no está vacío
+        try {
+            if (Files.size(zipPath) == 0) {
+                PlacspLogger.decompressionError(zipFileName, "ZIP_VACIO", null);
+                throw DecompressionException.emptyZip(zipFileName);
+            }
+        } catch (IOException e) {
+            throw new DecompressionException("Error al verificar tamaño del ZIP: " + zipFileName, e);
+        }
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFilePath))) {
             ZipEntry entry;
-            
             while ((entry = zis.getNextEntry()) != null) {
                 if (entry.getName().toLowerCase().endsWith(".atom")) {
                     // Mantener el nombre original del ATOM
                     String nombreAtom = entry.getName();
-                    
                     Path destino = Paths.get(atomDir, nombreAtom);
-                    
-                    // Copiar el contenido
-                    Files.copy(zis, destino, StandardCopyOption.REPLACE_EXISTING);
-                    contadorExtraidos++;
+                    try {
+                        // Copiar el contenido
+                        Files.copy(zis, destino, StandardCopyOption.REPLACE_EXISTING);
+                        contadorExtraidos++;
+                    } catch (IOException e) {
+                        String errorMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+                        if (errorMsg.contains("no space") || errorMsg.contains("disk full") || errorMsg.contains("espacio")) {
+                            PlacspLogger.decompressionError(zipFileName, "DISCO_LLENO", e);
+                            throw DecompressionException.diskSpaceError(atomDir);
+                        } else if (errorMsg.contains("permission") || errorMsg.contains("denied")) {
+                            PlacspLogger.decompressionError(zipFileName, "PERMISO_DENEGADO", e);
+                            throw DecompressionException.permissionDenied(destino.toString(), e);
+                        }
+                        throw DecompressionException.extractionError(zipFileName, nombreAtom, e);
+                    }
                 }
                 zis.closeEntry();
             }
-            System.out.println("    [OK] Extraidos " + contadorExtraidos + " archivos ATOM");
+            if (contadorExtraidos == 0) {
+                PlacspLogger.warning("ZIP sin archivos ATOM: " + zipFileName);
+                PlacspLogger.unzip(zipFileName, atomDir, false);
+            } else {
+                System.out.println("    [OK] Extraidos " + contadorExtraidos + " archivos ATOM");
+                PlacspLogger.info("Extraídos " + contadorExtraidos + " ATOMs de: " + zipFileName);
+                PlacspLogger.unzip(zipFileName, atomDir, true);
+            }
+        } catch (ZipException e) {
+            PlacspLogger.decompressionError(zipFileName, "ZIP_CORRUPTO", e);
+            throw DecompressionException.corruptedZip(zipFileName, e);
+        } catch (java.io.EOFException e) {
+            PlacspLogger.decompressionError(zipFileName, "ZIP_INCOMPLETO", e);
+            throw DecompressionException.corruptedZip(zipFileName, e);
+        } catch (java.io.FileNotFoundException e) {
+            PlacspLogger.decompressionError(zipFileName, "ZIP_NO_ENCONTRADO", e);
+            throw new DecompressionException("ERR_ZIP_NOT_FOUND", "Archivo ZIP no encontrado: " + zipFilePath, e);
+        } catch (DecompressionException e) {
+            throw e; // Re-lanzar excepciones ya tipificadas
         } catch (IOException e) {
-            System.err.println("Error extrayendo ATOM de ZIP: " + e.getMessage());
+            PlacspLogger.decompressionError(zipFileName, "ERROR_IO", e);
+            throw new DecompressionException("Error al extraer archivos del ZIP: " + zipFileName, e);
         }
         return contadorExtraidos;
     }
@@ -354,15 +557,15 @@ public class AtomToExcelConverter {
     
     /**
      * Elimina los archivos ATOM que tienen mÃ¡s de N meses de antigÃ¼edad.
-     * La comparacion se hace dÃ­a a dÃ­a para una limpieza precisa.
+     * La comparaciÃ³n se hace dia a dia para una limpieza precisa.
      * 
-     * @param atomDir Directorio donde estÃ¡n los archivos ATOM
+     * @param atomDir Directorio donde estan los archivos ATOM
      * @param tipoExcel Tipo de archivo para filtrar (PerfContrat o Agregadas)
-     * @param mesesAntiguedad NÃºmero de meses de antigÃ¼edad mÃ¡xima
+     * @param mesesAntiguedad Numero de meses de antigÃ¼edad maxima
      */
     private void limpiarAtomsAntiguos(String atomDir, String tipoExcel, int mesesAntiguedad) {
         try {
-            // Calcular la fecha lÃ­mite (hace N meses exactos desde hoy)
+            // Calcular la fecha limite (hace N meses exactos desde hoy)
             LocalDate fechaHoy = LocalDate.now();
             LocalDate fechaLimite = fechaHoy.minusMonths(mesesAntiguedad);
             
@@ -381,7 +584,7 @@ public class AtomToExcelConverter {
                     LocalDate fechaAtom = extraerFechaCompleta(path.getFileName().toString());
                     // Si no tiene fecha en el nombre, es el archivo principal, no eliminar
                     if (fechaAtom == null) return false;
-                    // Eliminar si es anterior a la fecha lÃ­mite
+                    // Eliminar si es anterior a la fecha limite
                     return fechaAtom.isBefore(fechaLimite);
                 })
                 .collect(Collectors.toList());
@@ -422,7 +625,12 @@ public class AtomToExcelConverter {
      * Usa 3 meses como valor por defecto.
      */
     public void convertirTodosZipAExcel(String zipDir, String excelDir) {
-        convertirTodosZipAExcel(zipDir, excelDir, zipDir + "/atom", 3);
+        try {
+            convertirTodosZipAExcel(zipDir, excelDir, zipDir + "/atom", 3);
+        } catch (ConversionException | DecompressionException e) {
+            System.err.println("Error en conversión: " + e.getMessage());
+            PlacspLogger.error("Error en conversión (compatibilidad)", e);
+        }
     }
 
     /**

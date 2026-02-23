@@ -86,7 +86,7 @@ public class EnvConfig {
      * Obtiene una variable de configuracion como entero.
      * 
      * @param key Nombre de la variable
-     * @param defaultValue Valor por defecto si no existe o no es un nÃºmero
+     * @param defaultValue Valor por defecto si no existe o no es un numero
      * @return Valor entero de la variable
      */
     public static int getInt(String key, int defaultValue) {

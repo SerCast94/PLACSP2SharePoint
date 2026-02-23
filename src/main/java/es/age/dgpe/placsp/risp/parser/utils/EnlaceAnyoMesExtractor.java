@@ -85,11 +85,11 @@ public class EnlaceAnyoMesExtractor {
                 System.out.println("  Descargando: " + nombreOriginal);
                 descargarArchivo(enlace, nombreArchivo);
             } else {
-                System.out.println("  No se encontro enlace AÃ‘OMES.");
+                System.out.println("  No se encontro enlace ANOMES.");
             }
         }
         
-        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresion automÃ¡ticamente)
+        // Fase 2: Convertir ZIP a Excel (el CLI maneja la descompresion automaticamente)
         System.out.println("\n[FASE 2] Convirtiendo archivos ZIP a Excel...");
         convertirTodosZipAExcel(downloadDir, excelDir);
         
