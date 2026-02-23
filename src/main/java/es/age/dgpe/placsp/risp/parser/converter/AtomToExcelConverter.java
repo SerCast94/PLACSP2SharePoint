@@ -50,12 +50,12 @@ public class AtomToExcelConverter {
     private List<String> buildCliArgs(String inputPath, String outputPath) {
         List<String> args = new ArrayList<>();
         String os = System.getProperty("os.name").toLowerCase();
-        
+
         // Construir las opciones del CLI
         StringBuilder options = new StringBuilder();
         options.append("--in '").append(inputPath).append("' ");
         options.append("--out '").append(outputPath).append("'");
-        
+
         if (EnvConfig.isCliDosTablas()) {
             options.append(" --dos-tablas");
         }
@@ -65,7 +65,7 @@ public class AtomToExcelConverter {
         if (!EnvConfig.isCliIncluirCpm()) {
             options.append(" --sin-cpm");
         }
-        
+
         if (os.contains("win")) {
             args.add("cmd.exe");
             args.add("/c");
@@ -75,7 +75,7 @@ public class AtomToExcelConverter {
             args.add("-c");
             args.add("./" + EnvConfig.getCliCommand() + " " + options.toString());
         }
-        
+
         return args;
     }
 

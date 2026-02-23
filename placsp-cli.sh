@@ -15,5 +15,5 @@ else
 fi
 
 # Ejecutar el CLI de conversión
-exec "$JAVA_CMD" -Dfile.encoding=UTF-8 -cp "$DIR/target/classes:$DIR/lib/*" \
+exec "$JAVA_CMD" $JAVA_OPTS -Dfile.encoding=UTF-8 -cp "$DIR/target/classes:$DIR/lib/*" \
     es.age.dgpe.placsp.risp.parser.cli.AtomToExcelCLI "$@"

@@ -57,8 +57,8 @@ public class EnlaceAnyoMesExtractor {
     }
     
     public static void procesarCompleto(String[] urls) throws IOException {
-        String downloadDir = "descargas";
-        String excelDir = "descargas/excel";
+        String downloadDir = System.getenv().getOrDefault("DOWNLOAD_DIR", "/app/descargas");
+        String excelDir = System.getenv().getOrDefault("EXCEL_DIR", "/app/descargas/excel");
         
         long startTime = System.currentTimeMillis();
         
