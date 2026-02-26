@@ -29,6 +29,7 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
 import org.apache.poi.ss.usermodel.Cell;
+import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
@@ -503,10 +504,13 @@ private static String limpiarSaltosDeLinea(String texto) {
             if (idxPresentacion4 >= 0) {
                 wb.removeSheetAt(idxPresentacion4);
             }
-            // Eliminar hoja "Resultados" si existe
-            int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
-            if (idxResultados >= 0) {
-                wb.removeSheetAt(idxResultados);
+            // Eliminar hoja "Resultados" si existe y está activado en .env
+            boolean removeResultados = EnvConfig.getBoolean("RESULTADOS_REMOVE", false);
+            if (removeResultados) {
+                int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
+                if (idxResultados >= 0) {
+                    wb.removeSheetAt(idxResultados);
+                }
             }
 
             // ===================================================================

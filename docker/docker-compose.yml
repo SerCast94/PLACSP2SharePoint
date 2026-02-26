@@ -16,8 +16,8 @@ services:
     
     environment:
       - TZ=Europe/Madrid
-      - CRON_SCHEDULE=42 17 * * *  # Prueba inmediata a las 9:30
-      - JAVA_OPTS=-Xmx16g  # Recomendado para procesar grandes volúmenes de datos
+      - CRON_SCHEDULE=29 10 * * *  # Prueba inmediata a las 9:30
+      - JAVA_OPTS=-Xmx8g  # Recomendado para procesar grandes volúmenes de datos
       # Las demás variables se leen del archivo .env montado
     
     volumes:
