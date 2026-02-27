@@ -36,8 +36,7 @@ Herramienta para descargar datos de la **Plataforma de Contratación del Sector 
 
 ## 📁 Estructura del proyecto
 
-```text
-```text
+```
 PLACSP2SharePoint/
 ├── compilar.sh                  # Script de compilación
 ├── placsp-cli.sh                # CLI para conversión manual ZIP → Excel
