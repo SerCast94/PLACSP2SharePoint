@@ -37,34 +37,38 @@ Herramienta para descargar datos de la **Plataforma de Contratación del Sector 
 ## 📁 Estructura del proyecto
 
 ```text
+```text
 PLACSP2SharePoint/
-├── compilar.sh           # Compilar el proyecto
-├── placsp-cli.sh         # CLI para conversión manual ZIP→Excel
-├── .env                  # Configuración (credenciales SharePoint)
-├── .env.example          # Plantilla de configuración
+├── compilar.sh                  # Script de compilación
+├── placsp-cli.sh                # CLI para conversión manual ZIP → Excel
+├── .env                         # Configuración (credenciales SharePoint)
+├── .env.example                 # Plantilla de configuración
 │
-├── src/main/java/es/age/dgpe/placsp/risp/parser/
-│   ├── workflow/         # Orquestador principal (PlacspWorkflow.java)
-│   ├── downloader/       # Descarga de archivos (FileDownloader, WebScraper)
-│   ├── converter/        # Conversión ATOM → Excel
-│   ├── cli/              # CLI para conversión manual (AtomToExcelCLI)
-│   ├── uploader/         # Subida a SharePoint (GraphSharePointUploader)
-│   ├── model/            # Modelos de datos CODICE/PLACSP
-│   └── utils/            # Utilidades (Config, PlacspLogger, Genericode)
+├── src/
+│   └── main/
+│       ├── java/
+│       │   └── es/age/dgpe/placsp/risp/parser/
+│       │       ├── workflow/          # Orquestador principal (PlacspWorkflow.java)
+│       │       ├── downloader/        # Descarga de archivos (FileDownloader, WebScraper)
+│       │       ├── converter/         # Conversión ATOM → Excel
+│       │       ├── cli/               # CLI para conversión manual (AtomToExcelCLI)
+│       │       ├── uploader/          # Subida a SharePoint (GraphSharePointUploader)
+│       │       ├── model/             # Modelos de datos CODICE/PLACSP
+│       │       └── utils/             # Utilidades (Config, PlacspLogger, Genericode)
+│       └── resources/
+│           ├── gc/                    # Catálogos Genericode (códigos CODICE)
+│           ├── templates/             # Plantilla Excel base
+│           └── open-placsp.properties # Configuración de la aplicación
 │
-├── src/main/resources/
-│   ├── gc/               # Catálogos Genericode (códigos CODICE)
-│   ├── templates/        # Plantilla Excel base
-│   └── open-placsp.properties # Configuración de la aplicación
-│
-├── target/classes/       # Archivos compilados (.class)
-├── lib/                  # Dependencias JAR (POI, CODICE, Graph, etc.)
-├── descargas/            # Archivos descargados temporalmente
-├── logs/                 # Log de operaciones (placsp.log)
-├── docker/               # Archivos para containerización
+├── target/
+│   └── classes/               # Archivos compilados (.class)
+├── lib/                        # Dependencias JAR (POI, CODICE, Graph, etc.)
+├── descargas/                  # Archivos descargados temporalmente
+├── logs/                       # Log de operaciones (placsp.log)
+├── docker/                      # Archivos para containerización
 │   ├── Dockerfile
 │   └── docker-compose.yml
-└── licenses/             # Licencias de componentes
+└── licenses/                   # Licencias de componentes
 ```
 
 ## 🔧 Requisitos previos
