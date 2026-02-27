@@ -421,20 +421,27 @@ public class AtomToExcelConverter {
         } else if (nombreExcel.contains("Agregadas")) {
             atomGeneralEsperado = "PlataformasAgregadasSinMenores.atom";
         }
-        // Mostrar todos los candidatos encontrados
-        List<Path> candidatos = new ArrayList<>();
+        // Depuración: mostrar todos los nombres de ATOM
+        PlacspLogger.info("Lista completa de ATOMs:");
+        for (Path atom : atomFiles) {
+            PlacspLogger.info("  - " + atom.getFileName());
+        }
+        // Buscar el ATOM base
+        Path atomBase = null;
         for (Path atom : atomFiles) {
             if (atomGeneralEsperado != null && atom.getFileName().toString().equals(atomGeneralEsperado)) {
-                candidatos.add(atom);
+                atomBase = atom;
+                break;
             }
         }
-        if (!candidatos.isEmpty()) {
-            atomPrincipal = candidatos.get(0);
-            PlacspLogger.info("ATOM general exacto encontrado: " + atomPrincipal.getFileName());
+        if (atomBase != null) {
+            PlacspLogger.info("ATOM base encontrado: " + atomBase.getFileName());
+            atomPrincipal = atomBase;
         } else {
-            PlacspLogger.warning("No se encontró el ATOM general exacto (" + atomGeneralEsperado + ") en la lista. Usando: " + atomFiles.get(0).getFileName());
+            PlacspLogger.warning("No se encontró el ATOM base (" + atomGeneralEsperado + ") en la lista. Usando: " + atomFiles.get(0).getFileName());
             atomPrincipal = atomFiles.get(0);
         }
+        PlacspLogger.info("ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
         Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
         System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
         System.out.println("  Archivo destino: " + excelPath.getFileName());
