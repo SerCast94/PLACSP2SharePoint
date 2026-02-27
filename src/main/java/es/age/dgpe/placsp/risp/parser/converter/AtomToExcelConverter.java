@@ -447,6 +447,39 @@ public class AtomToExcelConverter {
         System.out.println("  Archivo destino: " + excelPath.getFileName());
         convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
         PlacspLogger.processExcel(excelPath.toString(), true);
+        // Depuración: mostrar todos los nombres de ATOM
+        PlacspLogger.info("[DEBUG] Lista completa de ATOMs:");
+        System.out.println("\n[DEBUG] Lista completa de ATOMs:");
+        for (Path atom : atomFiles) {
+            PlacspLogger.info("  - " + atom.getFileName());
+            System.out.println("  - " + atom.getFileName());
+        }
+
+        // Buscar el ATOM base
+        Path atomBase = null;
+        for (Path atom : atomFiles) {
+            if (atomGeneralEsperado != null && atom.getFileName().toString().equals(atomGeneralEsperado)) {
+                atomBase = atom;
+                break;
+            }
+        }
+        if (atomBase != null) {
+            PlacspLogger.info("[DEBUG] ATOM base encontrado: " + atomBase.getFileName());
+            System.out.println("[DEBUG] ATOM base encontrado: " + atomBase.getFileName());
+            atomPrincipal = atomBase;
+        } else {
+            PlacspLogger.warning("[DEBUG] No se encontró el ATOM base (" + atomGeneralEsperado + ") en la lista. Usando: " + atomFiles.get(0).getFileName());
+            System.out.println("[DEBUG] No se encontró el ATOM base (" + atomGeneralEsperado + ") en la lista. Usando: " + atomFiles.get(0).getFileName());
+            atomPrincipal = atomFiles.get(0);
+        }
+        PlacspLogger.info("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
+        System.out.println("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
+
+        Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
+        System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
+        System.out.println("  Archivo destino: " + excelPath.getFileName());
+        convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
+        PlacspLogger.processExcel(excelPath.toString(), true);
         
         // Validar el Excel generado
         try {
