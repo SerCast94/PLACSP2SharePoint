@@ -376,7 +376,7 @@ public class AtomToExcelConverter {
         // 1.5. Limpiar ATOMs antiguos (mas de N meses)
         limpiarAtomsAntiguos(atomDir, nombreExcel, mesesAntiguedad);
         
-        // 2. Obtener todos los ATOMs de la carpeta, ordenados por fecha
+        // 2. Obtener todos los ATOMs de la carpeta, filtrados por tipo
         List<Path> atomFiles;
         try {
             atomFiles = Files.list(Paths.get(atomDir))
@@ -390,39 +390,57 @@ public class AtomToExcelConverter {
                         return nombre.contains("PlataformasAgregadas");
                     }
                 })
-                .sorted((a, b) -> {
-                    int fechaA = extraerFecha(a.getFileName().toString());
-                    int fechaB = extraerFecha(b.getFileName().toString());
-                    return Integer.compare(fechaA, fechaB);
-                })
                 .collect(Collectors.toList());
         } catch (IOException e) {
             PlacspLogger.fileSystemError("LISTAR_ATOMS", atomDir, e);
             throw new ConversionException("Error al listar archivos ATOM en: " + atomDir, e);
         }
-        
+
         if (atomFiles.isEmpty()) {
             PlacspLogger.warning("No hay archivos ATOM para tipo: " + nombreExcel);
             System.out.println("  [INFO] No hay archivos ATOM para este tipo.");
             return;
         }
-        
+
         System.out.println("\n  Total ATOMs acumulados: " + atomFiles.size());
         for (Path atom : atomFiles) {
             System.out.println("    - " + atom.getFileName());
         }
-        
-        // 3. Generar UN solo Excel usando el ATOM principal (el primero/mas antiguo)
-        // Este es el archivo completo, los demas son incrementales
-        Path atomPrincipal = atomFiles.get(0);
+
+        // 3. Buscar el archivo base (sin sufijos de fecha) y usarlo si existe
+        Path atomPrincipal = null;
+        String baseName = null;
+        if (nombreExcel.contains("PerfContrat")) {
+            baseName = "licitacionesPerfilesContratanteCompleto3.atom";
+        } else {
+            baseName = "licitacionesPlataformasAgregadasCompleto3.atom";
+        }
+        for (Path atom : atomFiles) {
+            if (atom.getFileName().toString().equals(baseName)) {
+                atomPrincipal = atom;
+                break;
+            }
+        }
+        // Si no existe el base, usar el más antiguo (como antes)
+        if (atomPrincipal == null) {
+            atomPrincipal = atomFiles.stream()
+                .sorted((a, b) -> {
+                    int fechaA = extraerFecha(a.getFileName().toString());
+                    int fechaB = extraerFecha(b.getFileName().toString());
+                    return Integer.compare(fechaA, fechaB);
+                })
+                .findFirst()
+                .orElse(atomFiles.get(0));
+        }
+
         Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
-        
+
         System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
         System.out.println("  Archivo destino: " + excelPath.getFileName());
-        
+
         convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
         PlacspLogger.processExcel(excelPath.toString(), true);
-        
+
         // Validar el Excel generado
         try {
             validarExcelGenerado(excelPath);
@@ -430,7 +448,7 @@ public class AtomToExcelConverter {
             PlacspLogger.error(e);
             throw new ConversionException("ERR_VALIDATION", e.getMessage(), e);
         }
-        
+
         System.out.println("  [OK] Conversion completada\n");
     }
     
