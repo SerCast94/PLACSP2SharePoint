@@ -123,23 +123,7 @@ Esto generará los archivos .class dentro de `target/classes/` y copiará los re
 
 ## 🐳 Despliegue con Docker
 
-### 1. Preparar el archivo .env
-El archivo `.env` debe existir en la raíz del proyecto (justo donde está la carpeta `docker/`). Verifica que esté correctamente configurado (especialmente las credenciales de SharePoint). Puedes comprobarlo con:
-
-```bash
-cat .env
-```
-
-### 2. Compilar antes de construir la imagen
-La imagen Docker espera encontrar las clases compiladas en `target/classes/`. Por tanto, es necesario compilar primero:
-
-```bash
-./compilar.sh
-```
-
-Si la compilación falla, revisa los errores (por ejemplo, classpath mal formado). El script ya incluye correcciones para entornos Linux.
-
-### 3. Levantar el contenedor
+### 1. Levantar el contenedor
 Accede a la carpeta `docker` y lanza el servicio programado (cron):
 
 ```bash
@@ -161,7 +145,7 @@ Para comprobar que el contenedor está corriendo:
 docker ps
 ```
 
-### 4. Ejecución bajo demanda
+### 2. Ejecución bajo demanda
 El `docker-compose.yml` incluye un perfil manual para ejecutar el workflow una sola vez. Úsalo así:
 
 ```bash
@@ -170,7 +154,7 @@ docker compose --profile manual up placsp-ondemand
 
 Este contenedor se ejecutará, realizará el trabajo y terminará.
 
-### 5. Personalizar el cron
+### 3. Personalizar el cron
 La frecuencia de ejecución programada se define con la variable `CRON_SCHEDULE` en el `docker-compose.yml`. Para cambiarla:
 
 ```bash
