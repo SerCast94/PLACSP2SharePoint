@@ -456,7 +456,7 @@ public class AtomToExcelConverter {
         }
 
         // Buscar el ATOM base
-        Path atomBase = null;
+        atomBase = null; // Usar la variable ya declarada arriba si existe, si no, declararla aquí una sola vez
         for (Path atom : atomFiles) {
             if (atomGeneralEsperado != null && atom.getFileName().toString().equals(atomGeneralEsperado)) {
                 atomBase = atom;
@@ -475,6 +475,7 @@ public class AtomToExcelConverter {
         PlacspLogger.info("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
         System.out.println("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
 
+        // Usar solo una declaración de excelPath
         Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
         System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
         System.out.println("  Archivo destino: " + excelPath.getFileName());
