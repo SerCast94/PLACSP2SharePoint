@@ -412,14 +412,30 @@ public class AtomToExcelConverter {
             System.out.println("    - " + atom.getFileName());
         }
         
-        // 3. Generar UN solo Excel usando el ATOM principal (el primero/mas antiguo)
-        // Este es el archivo completo, los demas son incrementales
-        Path atomPrincipal = atomFiles.get(0);
+        // 3. Generar UN solo Excel usando el ATOM principal esperado
+        // Si no existe, usar el primero y registrar aviso
+        Path atomPrincipal = null;
+        String atomGeneralEsperado = null;
+        if (nombreExcel.contains("PerfContrat")) {
+            atomGeneralEsperado = "licitacionesPerfilesContratanteCompleto3.atom";
+        } else if (nombreExcel.contains("Agregadas")) {
+            atomGeneralEsperado = "PlataformasAgregadasSinMenores.atom";
+        }
+        if (atomGeneralEsperado != null) {
+            for (Path atom : atomFiles) {
+                if (atom.getFileName().toString().equals(atomGeneralEsperado)) {
+                    atomPrincipal = atom;
+                    break;
+                }
+            }
+        }
+        if (atomPrincipal == null) {
+            atomPrincipal = atomFiles.get(0);
+            PlacspLogger.warning("No se encontró el ATOM general esperado (" + atomGeneralEsperado + ") en la lista. Usando: " + atomPrincipal.getFileName());
+        }
         Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
-        
         System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
         System.out.println("  Archivo destino: " + excelPath.getFileName());
-        
         convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
         PlacspLogger.processExcel(excelPath.toString(), true);
         
