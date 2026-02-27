@@ -422,10 +422,13 @@ public class AtomToExcelConverter {
             atomGeneralEsperado = "PlataformasAgregadasSinMenores.atom";
         }
         // Depuración: mostrar todos los nombres de ATOM
-        PlacspLogger.info("Lista completa de ATOMs:");
+        PlacspLogger.info("[DEBUG] Lista completa de ATOMs:");
+        System.out.println("\n[DEBUG] Lista completa de ATOMs:");
         for (Path atom : atomFiles) {
             PlacspLogger.info("  - " + atom.getFileName());
+            System.out.println("  - " + atom.getFileName());
         }
+
         // Buscar el ATOM base
         Path atomBase = null;
         for (Path atom : atomFiles) {
@@ -435,13 +438,17 @@ public class AtomToExcelConverter {
             }
         }
         if (atomBase != null) {
-            PlacspLogger.info("ATOM base encontrado: " + atomBase.getFileName());
+            PlacspLogger.info("[DEBUG] ATOM base encontrado: " + atomBase.getFileName());
+            System.out.println("[DEBUG] ATOM base encontrado: " + atomBase.getFileName());
             atomPrincipal = atomBase;
         } else {
-            PlacspLogger.warning("No se encontró el ATOM base (" + atomGeneralEsperado + ") en la lista. Usando: " + atomFiles.get(0).getFileName());
+            PlacspLogger.warning("[DEBUG] No se encontró el ATOM base (" + atomGeneralEsperado + ") en la lista. Usando: " + atomFiles.get(0).getFileName());
+            System.out.println("[DEBUG] No se encontró el ATOM base (" + atomGeneralEsperado + ") en la lista. Usando: " + atomFiles.get(0).getFileName());
             atomPrincipal = atomFiles.get(0);
         }
-        PlacspLogger.info("ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
+        PlacspLogger.info("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
+        System.out.println("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
+
         Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
         System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
         System.out.println("  Archivo destino: " + excelPath.getFileName());
