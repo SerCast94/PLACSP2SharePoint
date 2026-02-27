@@ -482,12 +482,7 @@ public class AtomToExcelConverter {
         PlacspLogger.info("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
         System.out.println("[DEBUG] ATOM seleccionado para Excel: " + atomPrincipal.getFileName());
 
-        // Usar solo una declaración de excelPath
-        Path excelPath = Paths.get(excelDir, nombreExcel + ".xlsx");
-        System.out.println("\n  Generando Excel desde: " + atomPrincipal.getFileName());
-        System.out.println("  Archivo destino: " + excelPath.getFileName());
-        convertirAtomAExcel(atomPrincipal.toString(), excelPath.toString());
-        PlacspLogger.processExcel(excelPath.toString(), true);
+        // ...existing code...
         
         // Validar el Excel generado
         try {
