@@ -1,0 +1,29 @@
+# Directorios de salida
+target/*
+cli-build/*
+
+# Archivos temporales
+*.tmp
+
+# JDK embebido (no necesario en Docker)
+jdk/
+
+# Git
+.git/
+.gitignore
+
+# Documentación
+*.md
+!README.md
+
+# Windows
+*.bat
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Archivos de prueba
+test/

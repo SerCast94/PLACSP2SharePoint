@@ -1,5 +1,7 @@
 package es.age.dgpe.placsp.risp.parser.cli;
 
+import es.age.dgpe.placsp.risp.parser.utils.PlacspLogger;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -27,6 +29,7 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
 import org.apache.poi.ss.usermodel.Cell;
+import es.age.dgpe.placsp.risp.parser.utils.EnvConfig;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
@@ -38,7 +41,6 @@ import org.w3._2005.atom.FeedType;
 import org.w3._2005.atom.LinkType;
 
 import com.ibm.icu.text.Normalizer2;
-import com.ibm.icu.text.Transliterator;
 
 import es.age.dgpe.placsp.risp.parser.model.DatosCPM;
 import es.age.dgpe.placsp.risp.parser.model.DatosEMP;
@@ -62,10 +64,6 @@ import ext.place.codice.common.caclib.PreliminaryMarketConsultationStatusType;
 public class AtomToExcelCLI {
 
     private static Unmarshaller atomUnMarshaller;
-
-    // Transliterator de ICU4J para limpieza exhaustiva de texto (thread-safe, reutilizable)
-    private static final Transliterator LATIN_ASCII = Transliterator.getInstance(
-            "Any-Latin; Latin-ASCII; [\u0080-\uFFFF] Remove");
     private static final Normalizer2 NFC_NORMALIZER = Normalizer2.getNFCInstance();
     
     // Patron precompilado para caracteres problematicos en Power BI M
@@ -273,7 +271,7 @@ private static String limpiarSaltosDeLinea(String texto) {
                 if (inPath.toLowerCase().endsWith(".zip")) {
                     System.out.println("Detectado archivo ZIP, extrayendo: " + inPath);
                     String extractedAtom = extractAndFindAtom(inPath, tempDir);
-                    System.out.println("Usando archivo extraÃ­do: " + extractedAtom);
+                    System.out.println("Usando archivo extraido: " + extractedAtom);
                     actualInPaths.add(extractedAtom);
                 } else {
                     actualInPaths.add(inPath);
@@ -282,13 +280,13 @@ private static String limpiarSaltosDeLinea(String texto) {
 
             Args actualArgs = new Args(actualInPaths, parsed.outPath, parsed.dosTablas, parsed.sinEMP, parsed.sinCPM, true, 0);
             new AtomToExcelCLI().convert(actualArgs);
-            System.out.println("ConversiÃ³n completada: " + parsed.outPath);
+            System.out.println("Conversion completada: " + parsed.outPath);
         } catch (Exception e) {
-            System.err.println("Error en la conversiÃ³n: " + e.getMessage());
+            System.err.println("Error en la conversion: " + e.getMessage());
             e.printStackTrace();
             System.exit(2);
         } finally {
-            // Limpiar directorio temporal si se creÃ³
+            // Limpiar directorio temporal si se creo
             if (tempDir != null) {
                 try {
                     deleteRecursively(tempDir);
@@ -325,16 +323,22 @@ private static String limpiarSaltosDeLinea(String texto) {
         // Buscar el .atom con el mismo nombre base
         File[] files = tempDir.toFile().listFiles((dir, name) -> name.equalsIgnoreCase(baseName + ".atom"));
         if (files != null && files.length > 0) {
+            System.out.println("LOG unzip: " + zipPath + " -> " + tempDir + " success=true");
+            PlacspLogger.unzip(zipPath, tempDir.toString(), true);
             return files[0].getAbsolutePath();
         }
 
         // Si no se encuentra con el mismo nombre, buscar cualquier .atom
         files = tempDir.toFile().listFiles((dir, name) -> name.toLowerCase().endsWith(".atom"));
         if (files != null && files.length > 0) {
+            System.out.println("LOG unzip: " + zipPath + " -> " + tempDir + " success=true");
+            PlacspLogger.unzip(zipPath, tempDir.toString(), true);
             return files[0].getAbsolutePath();
         }
 
-        throw new FileNotFoundException("No se encontrÃ³ archivo .atom en el ZIP");
+        System.out.println("LOG unzip: " + zipPath + " -> " + tempDir + " success=false");
+        PlacspLogger.unzip(zipPath, tempDir.toString(), false);
+        throw new FileNotFoundException("No se encontro archivo .atom en el ZIP");
     }
 
     private static void deleteRecursively(Path path) throws IOException {
@@ -359,7 +363,6 @@ private static String limpiarSaltosDeLinea(String texto) {
         int numeroFicherosProcesados = 0;
 
         FeedType res = null;
-        FileOutputStream output_file = null;
         InputStreamReader inStream = null;
 
         ArrayList<DatosLicitacionGenerales> seleccionLicitacionGenerales = new ArrayList<>(Arrays.asList(DatosLicitacionGenerales.values()));
@@ -497,10 +500,17 @@ private static String limpiarSaltosDeLinea(String texto) {
             if (idxPresentacion3 >= 0) {
                 wb.removeSheetAt(idxPresentacion3);
             }
-            // Eliminar hoja "Resultados" si existe
-            int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
-            if (idxResultados >= 0) {
-                wb.removeSheetAt(idxResultados);
+            int idxPresentacion4 = wb.getSheetIndex("presentaci\u00f3n");
+            if (idxPresentacion4 >= 0) {
+                wb.removeSheetAt(idxPresentacion4);
+            }
+            // Eliminar hoja "Resultados" si existe y está activado en .env
+            boolean removeResultados = EnvConfig.getBoolean("RESULTADOS_REMOVE", false);
+            if (removeResultados) {
+                int idxResultados = wb.getSheetIndex(SpreeadSheetManager.RESULTADOS);
+                if (idxResultados >= 0) {
+                    wb.removeSheetAt(idxResultados);
+                }
             }
 
             // ===================================================================
@@ -532,6 +542,10 @@ private static String limpiarSaltosDeLinea(String texto) {
                 if (idxPresentacionX3 >= 0) {
                     xssfWorkbook.removeSheetAt(idxPresentacionX3);
                 }
+                int idxPresentacionX4 = xssfWorkbook.getSheetIndex("presentaci\u00f3n");
+                if (idxPresentacionX4 >= 0) {
+                    xssfWorkbook.removeSheetAt(idxPresentacionX4);
+                }
 
                 // Añadir metadatos personalizados a la hoja "Licitaciones"
                 POIXMLProperties props = xssfWorkbook.getProperties();
@@ -559,6 +573,7 @@ private static String limpiarSaltosDeLinea(String texto) {
             // 3. Eliminar archivo temporal
             tempFile.delete();
             
+            PlacspLogger.processExcel(args.outPath, true);
             System.out.println("Total: " + numeroEntries + " entries procesadas, " + entriesProcesadas.size() + " únicas");
 
         } catch (JAXBException e) {
